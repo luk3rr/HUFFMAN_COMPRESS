@@ -156,9 +156,11 @@ namespace huff {
         file.write(SIGNATURE.data(), SIGNATURE.size());
         std::streampos signatureEndPos = file.tellp();
 
-        // Reserva os três primeiros bytes do arquivo para representar o tamanho do cabeçalho
-        unsigned char reservedBytes[3] = {0, 0, 0};
-        file.write(reinterpret_cast<char*>(reservedBytes), 3);
+        // Reserva o 4 bytes do arquivo
+        // 1 byte para representar quantos bits do último byte são válidos
+        // 3 bytes para representar o tamanho do cabeçalho
+        unsigned char reservedBytes[4] = {0, 0, 0, 0};
+        file.write((char*) reservedBytes, sizeof(reservedBytes));
 
         std::streampos headerStartPos = file.tellp();
 
@@ -177,7 +179,8 @@ namespace huff {
         std::streamoff headerSize = headerEndPos - headerStartPos;
 
         // Escreve o tamanho do cabeçalho no arquivo
-        file.seekp(signatureEndPos);
+        // O primeiro byte reservado será escrito posteriormente
+        file.seekp(static_cast<std::streamoff>(signatureEndPos) + 1);
         file.put((headerSize >> 16) & 0xFF);
         file.put((headerSize >> 8) & 0xFF);
         file.put(headerSize & 0xFF);
@@ -356,28 +359,40 @@ namespace huff {
             }
 
             if (not bufferWrite.empty()) {
+                // Completa o último byte e o grava no arquivo
+                unsigned int junkBitsOnLastbyte = 0;
                 if (bufferWrite.size() % 8 != 0) {
                     while (bufferWrite.size() % 8 != 0) {
                         bufferWrite += "0";
+                        junkBitsOnLastbyte++;
                     }
                 }
                 this->WriteBuffer(output, bufferWrite);
+
+                // Grava quantos bits são válidos no último byte
+                output.seekp(SIGNATURE.size(), std::ios::beg);
+                unsigned char byte = static_cast<unsigned char>(8 - junkBitsOnLastbyte);
+                output.write((char*) &byte, sizeof(byte));
             }
             output.close();
             file.close();
         }
     }
 
-    std::streampos Compress::ReadHeader(std::ifstream &file, std::string filename) {
+    unsigned int Compress::ReadHeader(std::ifstream &file, std::string filename) {
         // Volta a posição de leitura para o inicio do arquivo
         file.seekg(0, std::ios::beg);
 
         if (not this->CheckSignature(file))
             throw huffexcpt::InvalidSignature(filename);
 
+        // Lê quantos bits do último byte são válidos
+        unsigned char validBitsOnLastByte;
+        file.read((char*) &validBitsOnLastByte, sizeof(validBitsOnLastByte));
+
         // Lê o tamano do cabeçalho
         unsigned char headerSizeBytes[3];
-        file.read(reinterpret_cast<char*>(headerSizeBytes), 3);
+        file.read((char*) headerSizeBytes, 3);
 
         unsigned int headerSize = 0;
         headerSize |= static_cast<unsigned int>(headerSizeBytes[0]);
@@ -391,7 +406,7 @@ namespace huff {
 
         for (unsigned int i = 0; i < headerSize; ++i) {
             unsigned char byte;
-            file.read(reinterpret_cast<char*>(&byte), sizeof(byte));
+            file.read((char*) &byte, sizeof(byte));
 
             // Armazena cada bit em uma posição do vector
             for (int j = 7; j >= 0; j--) {
@@ -411,11 +426,14 @@ namespace huff {
         this->m_trie.DeleteTree();
         this->m_trie.InsertExistingTree(root, numNodes);
 
-        return file.tellg();
+        // Retorna quantos bits do último byte são válidos
+        return static_cast<unsigned int>(validBitsOnLastByte);
     }
 
     void Compress::Decode(std::string binFile) {
         std::ifstream bin(binFile, std::ios::binary);
+        // Obtém a posição atual (tamanho do arquivo)
+        std::streampos binSize = bin.tellg();
 
         std::filesystem::path filePath(binFile);
         std::string outputFileName = filePath.stem().string() + "-decompress.txt";
@@ -427,7 +445,7 @@ namespace huff {
         if (not decompress.is_open())
             throw huffexcpt::CouldNotOpenFile(outputFileName);
 
-        this->ReadHeader(bin, binFile);
+        unsigned int validBitsOnLastByte = this->ReadHeader(bin, binFile);
 
         Node<std::string> *current = this->m_trie.GetRoot();
 
@@ -439,7 +457,12 @@ namespace huff {
 
         unsigned char* buffer = new unsigned char[BUFFER_MAX_SIZE];
 
+        std::streampos endReadPosition = static_cast<std::streamoff>(binSize) - 1;
+
+        auto decodeTime = std::chrono::high_resolution_clock::now();
         while (bin.read((char*) buffer, BUFFER_MAX_SIZE) or bin.gcount() > 0) {
+
+            std::streampos currentReadPosition = bin.tellg();
 
             for (unsigned int i = 0; i < bin.gcount(); i++) {
                 byte = static_cast<unsigned char>(buffer[i]);
@@ -448,6 +471,14 @@ namespace huff {
                 bufferRead += bits.to_string();
 
                 while (bufferPosition < bufferRead.size()) {
+                    // Se estiver no último byte, itera somente sobre os bits válidos
+                    // Os bits inválidos (0's usados apenas para completar um byte e possibilitar a gravação do último byte)
+                    // causavam um percorrimento na árvore e consequente inserção de um caractere aleatório no fim do arquivo
+                    // descompactado
+                    // IF (o último byte está no buffer AND está iterando no último byte AND e o último bit válido já foi lido)
+                    if (currentReadPosition == endReadPosition and i == bin.gcount() - 1 and bufferPosition == bufferRead.size() - (8 - validBitsOnLastByte))
+                        break;
+
                     if (bufferRead[bufferPosition++] == '1')
                         current = current->m_right;
                     else

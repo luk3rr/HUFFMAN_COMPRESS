@@ -76,8 +76,9 @@ namespace huff {
             /**
              * @brief Lê o cabeçalho do arquivo binário
              * @param file Arquivo binário que será lido
+             * @return Quantos bits do último byte do arquivo são válidos
              **/
-            std::streampos ReadHeader(std::ifstream &file, std::string filename);
+            unsigned int ReadHeader(std::ifstream &file, std::string filename);
 
             /**
              * @brief Escreve a informação para a reconstrução da árvore no arquivo binário
