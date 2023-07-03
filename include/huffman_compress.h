@@ -12,6 +12,7 @@
 #include <bitset>
 #include <exception>
 #include <ios>
+#include "chrono"
 #include <string>
 #include <filesystem>
 #include <cstddef>

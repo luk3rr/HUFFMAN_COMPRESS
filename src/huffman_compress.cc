@@ -237,9 +237,32 @@ namespace huff {
 
         map::Map<std::string, unsigned int> map;
 
+        // Inicio de medição do tempo total da compressão
+        auto encodeTime = std::chrono::high_resolution_clock::now();
+
+        // Medição do tempo de execução do cálculo das frequências
+        auto start = std::chrono::high_resolution_clock::now();
+
         this->Frequencies(file, map);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << "Cálculo das Frequências: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+
+        // Medição do tempo de execução da construção da árvore
+        start = std::chrono::high_resolution_clock::now();
+
         this->BuildTrie(map);
+
+        end = std::chrono::high_resolution_clock::now();
+        std::cout << "Construção da trie: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+
+        // Medição do tempo de execução da construção dos códigos
+        start = std::chrono::high_resolution_clock::now();
+
         this->BuildCode();
+
+        end = std::chrono::high_resolution_clock::now();
+        std::cout << "Construção dos códigos: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
 
         file.clear();
         file.seekg(0, std::ios::beg);
@@ -258,6 +281,8 @@ namespace huff {
 
         unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
 
+        // Medição do tempo de compressão do arquivo
+        start = std::chrono::high_resolution_clock::now();
         if (output.is_open()) {
             // Escreve o cabeçalho do arquivo
             output.seekp(this->WriteHeader(output));
@@ -376,6 +401,10 @@ namespace huff {
             }
             output.close();
             file.close();
+
+            end = std::chrono::high_resolution_clock::now();
+            std::cout << "Compressão do arquivo: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+            std::cout << "Tempo total: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - encodeTime) << std::endl;
         }
     }
 
@@ -436,7 +465,7 @@ namespace huff {
         std::streampos binSize = bin.tellg();
 
         std::filesystem::path filePath(binFile);
-        std::string outputFileName = filePath.stem().string() + "-decompress.txt";
+        std::string outputFileName = filePath.stem().string() + "-decompressed.txt";
         std::ofstream decompress(outputFileName, std::ios::binary);
 
         if (not bin.is_open() or std::filesystem::is_directory(binFile))
@@ -499,14 +528,15 @@ namespace huff {
             }
         }
 
-        std::cout << bufferWrite.size() << std::endl;
         if (not bufferWrite.empty()) {
             this->WriteBuffer(decompress, bufferWrite);
         }
 
-        std::cout << bufferWrite.size() << std::endl;
         decompress.close();
         bin.close();
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::cout << "Descompressão do arquivo: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - decodeTime) << std::endl;
     }
 
     Node<std::string> *Compress::RebuildTrie(std::ifstream &file, Vector<bool> &headerData, unsigned int &pos, unsigned int &numNodes) {
