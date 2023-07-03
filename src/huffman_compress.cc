@@ -5,6 +5,7 @@
 */
 
 #include "huffman_compress.h"
+#include "huffman_compress_excpt.h"
 
 namespace huff {
     Compress::Compress() { }
@@ -18,72 +19,116 @@ namespace huff {
         std::string byteSet;
         std::bitset<8> bits;
 
-        while (string >> std::noskipws >> byte) {
-            bits = std::bitset<8>(byte);
+        unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
 
-            if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
-                byteSet.clear();
-                byteSet = bits.to_string();
+        while (string.read((char*) bufferRead, BUFFER_MAX_SIZE) or string.gcount() > 0) {
 
-                // Operadtor de incremento da seg fault em alguns casos quando a chave ainda não existe
-                if (map.Contains(byteSet))
-                    map[byteSet]++;
-                else
-                    map[byteSet];
-            }
-            else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
-                byteSet.clear();
-                byteSet += bits.to_string();
+            for (unsigned int i = 0; i < string.gcount(); i++) {
 
-                string >> std::noskipws >> byte;
-
+                byte = static_cast<unsigned char>(bufferRead[i]);
                 bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
 
-                if (map.Contains(byteSet))
-                    map[byteSet]++;
-                else
-                    map[byteSet];
-            }
-            else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
-                byteSet.clear();
-                byteSet += bits.to_string();
+                if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
+                    byteSet.clear();
+                    byteSet = bits.to_string();
 
-                string >> std::noskipws >> byte;
-                bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
+                    // Operadtor de incremento da seg fault em alguns casos quando a chave ainda não existe
+                    if (map.Contains(byteSet))
+                        map[byteSet]++;
+                    else
+                        map[byteSet];
+                }
+                else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
+                    byteSet.clear();
+                    byteSet += bits.to_string();
 
-                string >> std::noskipws >> byte;
-                bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
 
-                if (map.Contains(byteSet))
-                    map[byteSet]++;
-                else
-                    map[byteSet];
-            }
-            else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
-                byteSet.clear();
-                byteSet += bits.to_string();
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
 
-                string >> std::noskipws >> byte;
-                bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
 
-                string >> std::noskipws >> byte;
-                bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
+                    if (map.Contains(byteSet))
+                        map[byteSet]++;
+                    else
+                        map[byteSet];
+                }
+                else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
+                    byteSet.clear();
+                    byteSet += bits.to_string();
 
-                string >> std::noskipws >> byte;
-                bits = std::bitset<8>(byte);
-                byteSet += bits.to_string();
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
 
-                if (map.Contains(byteSet))
-                    map[byteSet]++;
-                else
-                    map[byteSet];
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
+
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
+
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
+
+                    if (map.Contains(byteSet))
+                        map[byteSet]++;
+                    else
+                        map[byteSet];
+                }
+                else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
+                    byteSet.clear();
+                    byteSet += bits.to_string();
+
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
+
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
+
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
+
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
+
+                    i++;
+                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
+                        string >> std::noskipws >> byte;
+
+                    else
+                        byte = static_cast<unsigned char>(bufferRead[i]);
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
+
+                    if (map.Contains(byteSet))
+                        map[byteSet]++;
+                    else
+                        map[byteSet];
+                }
             }
         }
+
+        delete[] bufferRead;
     }
 
     void Compress::BuildTrie(map::Map<std::string, unsigned int> &map) {
@@ -280,7 +325,7 @@ namespace huff {
         std::string bufferWrite;
 
         std::filesystem::path filePath(fileName);
-        std::string outputFile = filePath.stem().string() + ".bin";
+        std::string outputFile = filePath.parent_path() / (filePath.stem().string() + ".bin");
         std::ofstream output(outputFile, std::ios::binary);
 
         if (not output.is_open())
@@ -409,6 +454,8 @@ namespace huff {
             output.close();
             file.close();
 
+            delete[] bufferRead;
+
             end = std::chrono::high_resolution_clock::now();
             std::cout << "Compressão do arquivo: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
             std::cout << "Tempo total: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - encodeTime) << std::endl;
@@ -471,7 +518,8 @@ namespace huff {
 
 
         std::filesystem::path filePath(binFile);
-        std::string outputFileName = filePath.stem().string() + "-decompressed.txt";
+
+        std::string outputFileName = filePath.parent_path() / (filePath.stem().string() + "-decompressed.txt");
         std::ofstream decompress(outputFileName, std::ios::binary);
 
 

@@ -65,7 +65,28 @@ int main(int argc, char* argv[]) {
     if (compress) {
         try {
             compressor.Encode(filePath);
-            std::cout << "Compressão concluída!" << std::endl;
+
+            std::filesystem::path inputPath(filePath);
+            std::string outputFile = inputPath.stem().string() + ".bin";
+            std::ifstream input(filePath, std::ios::binary);
+            std::ifstream output(outputFile, std::ios::binary);
+
+            if (input.is_open() and output.is_open()) {
+                input.seekg(0, std::ios::end);
+                std::streampos inputSize = input.tellg();
+
+                output.seekg(0, std::ios::end);
+                std::streampos outputSize = output.tellg();
+
+                if (inputSize > outputSize) {
+                    double compressionRate = ((inputSize - outputSize) / static_cast<double>(inputSize)) * 100;
+                    std::cout << std::fixed << std::setprecision(2);
+                    std::cout << "Taxa de compressão: " << compressionRate << "%" << std::endl;
+                }
+
+                input.close();
+                output.close();
+            }
         }
         catch (std::exception &e) {
             std::cerr << e.what() << std::endl;
@@ -75,7 +96,6 @@ int main(int argc, char* argv[]) {
     else if (decompress) {
         try {
             compressor.Decode(filePath);
-            std::cout << "Descompressão concluída!" << std::endl;
         }
         catch (std::exception &e) {
             std::cerr << e.what() << std::endl;
