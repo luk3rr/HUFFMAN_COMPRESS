@@ -41,6 +41,16 @@ namespace huffexcpt {
             const char *what() const throw();
     };
 
+    class FileIsEmpty : public std::exception {
+        private:
+            std::string m_msg ;
+
+        public:
+            FileIsEmpty(std::string file);
+
+            const char *what() const throw();
+    };
+
 } // namespace huffexcpt
 
 #endif // HUFFMAN_COMPRESS_EXCPT_H_

@@ -235,6 +235,13 @@ namespace huff {
         if (not file.is_open() or std::filesystem::is_directory(fileName))
             throw huffexcpt::CouldNotOpenFile(fileName);
 
+        file.seekg(0, std::ifstream::end);
+
+        if (file.tellg() == 0)
+            throw huffexcpt::FileIsEmpty(fileName);
+
+        file.seekg(0, std::ifstream::beg);
+
         map::Map<std::string, unsigned int> map;
 
         // Inicio de medição do tempo total da compressão
@@ -461,12 +468,21 @@ namespace huff {
 
     void Compress::Decode(std::string binFile) {
         std::ifstream bin(binFile, std::ios::binary);
-        // Obtém a posição atual (tamanho do arquivo)
-        std::streampos binSize = bin.tellg();
+
 
         std::filesystem::path filePath(binFile);
         std::string outputFileName = filePath.stem().string() + "-decompressed.txt";
         std::ofstream decompress(outputFileName, std::ios::binary);
+
+
+        // Obtém a posição atual
+        std::streampos binSize = bin.tellg();
+
+        bin.seekg(0, std::ifstream::end);
+        if (bin.tellg() == 0)
+            throw huffexcpt::FileIsEmpty(binFile);
+
+        bin.seekg(0, std::ifstream::beg);
 
         if (not bin.is_open() or std::filesystem::is_directory(binFile))
             throw huffexcpt::CouldNotOpenFile(binFile);
@@ -589,14 +605,8 @@ namespace huff {
         if (not file.is_open())
             throw huffexcpt::CouldNotOpenFile(filename);
 
-        char buffer[4];
-        file.read(buffer, sizeof(buffer));
-
-        // Verifica se os primeiros bytes indicam um arquivo UTF-8 válido
-        if (file.gcount() >= 3) {
-            if (buffer[0] == char(0xEF) and buffer[1] == char(0xBB) and buffer[2] == char(0xBF))
-                return true; // UTF-8 com BOM
-        }
+        unsigned char buffer[20];
+        file.read((char*) buffer, sizeof(buffer));
 
         // Verifica se os bytes indicam um arquivo UTF-8 válido (sem BOM)
         int numBytes = 0;
@@ -607,7 +617,7 @@ namespace huff {
             else if ((buffer[i] & 0xE0) == 0xC0)
                 numBytes = 2; // Inicia sequência de 2 bytes
 
-            else if ((buffer[i] & 0xF0) == 0xE0) 
+            else if ((buffer[i] & 0xF0) == 0xE0)
                 numBytes = 3; // Inicia sequência de 3 bytes
 
             else if ((buffer[i] & 0xF8) == 0xF0)
@@ -615,7 +625,6 @@ namespace huff {
 
             else
                 return false; // Byte inválido
-            
 
             for (int j = 1; j < numBytes; j++) {
                 if (i + j >= file.gcount()) {
@@ -628,7 +637,6 @@ namespace huff {
 
             i += numBytes - 1;
         }
-
         return true;
     }
 

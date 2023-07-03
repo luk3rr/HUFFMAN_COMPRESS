@@ -29,3 +29,11 @@ huffexcpt::InvalidSignature::InvalidSignature(std::string file) {
 const char* huffexcpt::InvalidSignature::what() const throw() {
     return this->m_msg.c_str();
 }
+
+huffexcpt::FileIsEmpty::FileIsEmpty(std::string file) {
+    this->m_msg = "ERRO: O arquivo '" + file + "' está vazio.";
+}
+
+const char* huffexcpt::FileIsEmpty::what() const throw() {
+    return this->m_msg.c_str();
+}
