@@ -25,7 +25,9 @@
 #include "map.h"
 #include "vector.h"
 
+
 const std::string SIGNATURE = "HUFF"; // Assinatura do arquivo comprimido
+const std::size_t BUFFER_MAX_SIZE = 1024 * 16; // 16 KB
 
 namespace huff {
     class Compress {

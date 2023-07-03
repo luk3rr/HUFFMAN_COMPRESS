@@ -124,18 +124,27 @@ namespace huff {
             std::size_t bufferSize = buffer.size();
             std::size_t numBytes = bufferSize / 8;
 
+            unsigned char* data = new unsigned char[numBytes];
+
+            // Passa os bits na string para um array
             for (std::size_t i = 0; i < numBytes; ++i) {
                 unsigned char byte = 0;
 
                 for (std::size_t j = 0; j < 8; ++j) {
                     if (buffer[i * 8 + j] == '1')
                         byte |= (1 << (7 - j));
-
                 }
-                file.write(reinterpret_cast<char*>(&byte), sizeof(byte));
+
+                data[i] = byte;
             }
 
+            // Escreve os dados do buffer no arquivo
+            file.write((char*) data, numBytes);
+
+            // Remove os dados que foram gravados do buffer
             buffer = buffer.substr(numBytes * 8);
+
+            delete[] data;
         }
     }
 
@@ -235,7 +244,7 @@ namespace huff {
         unsigned char byte;
         std::string byteSet;
         std::bitset<8> bits;
-        std::string buffer;
+        std::string bufferWrite;
 
         std::filesystem::path filePath(fileName);
         std::string outputFile = filePath.stem().string() + ".bin";
@@ -244,93 +253,115 @@ namespace huff {
         if (not output.is_open())
             throw huffexcpt::CouldNotOpenFile(outputFile);
 
+        unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
+
         if (output.is_open()) {
             // Escreve o cabeçalho do arquivo
             output.seekp(this->WriteHeader(output));
 
             // Inicia a escrita dos dados codificiados
-            while (file >> std::noskipws >> byte) {
-                bits = std::bitset<8>(byte);
+            while (file.read((char*) bufferRead, BUFFER_MAX_SIZE) or file.gcount() > 0) {
 
-                if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
-                    if (this->m_map.Contains(bits.to_string())) {
-                        buffer += this->m_map[bits.to_string()];
+                for (unsigned int i = 0; i < file.gcount(); i++) {
+                    byte = static_cast<unsigned char>(bufferRead[i]);
+                    bits = std::bitset<8>(byte);
+
+                    if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
+                        bufferWrite += this->m_map[bits.to_string()];
+
                     }
-                    else {
-                        std::cout << "ERRO T" << std::endl;
+                    else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
+                        byteSet.clear();
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        bufferWrite += this->m_map[byteSet];
+                    }
+                    else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
+                        byteSet.clear();
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        bufferWrite += this->m_map[byteSet];
+                    }
+                    else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
+                        byteSet.clear();
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        i++;
+                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
+                            file >> std::noskipws >> byte;
+
+                        else
+                            byte = static_cast<unsigned char>(bufferRead[i]);
+
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+
+                        bufferWrite += this->m_map[byteSet];
                     }
                 }
-                else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
 
-                    file >> std::noskipws >> byte;
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    if (this->m_map.Contains(byteSet)) {
-                        buffer += this->m_map[byteSet];
-                    }
-                    else {
-                        std::cout << "ERRO" << std::endl;
-                    }
-                }
-                else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
-
-                    file >> std::noskipws >> byte;
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    file >> std::noskipws >> byte;
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    if (this->m_map.Contains(byteSet)) {
-                        buffer += this->m_map[byteSet];
-                    }
-                    else {
-                        std::cout << "ERRO" << std::endl;
-                    }
-                }
-                else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
-
-                    file >> std::noskipws >> byte;
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    file >> std::noskipws >> byte;
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    file >> std::noskipws >> byte;
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    if (this->m_map.Contains(byteSet)) {
-                        buffer += this->m_map[byteSet];
-                    }
-                    else {
-                        std::cout << "ERRO" << std::endl;
-                    }
-                }
-
-                if (buffer.size() % 8 == 0) {
-                    this->WriteBuffer(output, buffer);
+                if (bufferWrite.size() >= BUFFER_MAX_SIZE) {
+                    this->WriteBuffer(output, bufferWrite);
                 }
             }
 
-            if (not buffer.empty()) {
-                if (buffer.size() % 8 != 0) {
-                    while (buffer.size() % 8 != 0) {
-                        buffer += "0";
+            if (not bufferWrite.empty()) {
+                if (bufferWrite.size() % 8 != 0) {
+                    while (bufferWrite.size() % 8 != 0) {
+                        bufferWrite += "0";
                     }
                 }
-                this->WriteBuffer(output, buffer);
+                this->WriteBuffer(output, bufferWrite);
             }
             output.close();
             file.close();
@@ -401,33 +432,48 @@ namespace huff {
         Node<std::string> *current = this->m_trie.GetRoot();
 
         std::bitset<8> bits;
-        std::string buffer;
+        std::string bufferRead;
+        std::string bufferWrite;
         unsigned char byte;
         unsigned int bufferPosition = 0;
 
-        while (bin >> std::noskipws >> byte) {
-            bits = std::bitset<8>(byte);
-            buffer += bits.to_string();
+        unsigned char* buffer = new unsigned char[BUFFER_MAX_SIZE];
 
-            while (bufferPosition < buffer.size()) {
-                if (buffer[bufferPosition++] == '1')
-                    current = current->m_right;
-                else
-                    current = current->m_left;
+        while (bin.read((char*) buffer, BUFFER_MAX_SIZE) or bin.gcount() > 0) {
 
-                if (current->IsLeaf()) {
-                    std::string decodeChar = current->GetKey();
-                    this->WriteBuffer(decompress, decodeChar);
-                    current = this->m_trie.GetRoot();
+            for (unsigned int i = 0; i < bin.gcount(); i++) {
+                byte = static_cast<unsigned char>(buffer[i]);
+                bits = std::bitset<8>(byte);
 
-                    buffer = buffer.substr(bufferPosition);
-                    bufferPosition = 0;
+                bufferRead += bits.to_string();
+
+                while (bufferPosition < bufferRead.size()) {
+                    if (bufferRead[bufferPosition++] == '1')
+                        current = current->m_right;
+                    else
+                        current = current->m_left;
+
+                    if (current->IsLeaf()) {
+                        bufferWrite += current->GetKey();
+                        current = this->m_trie.GetRoot();
+
+                        bufferRead = bufferRead.substr(bufferPosition);
+                        bufferPosition = 0;
+                    }
                 }
+            }
+
+            if (bufferWrite.size() >= BUFFER_MAX_SIZE) {
+                this->WriteBuffer(decompress, bufferWrite);
             }
         }
 
-        std::cout << buffer.size() << std::endl;
+        std::cout << bufferWrite.size() << std::endl;
+        if (not bufferWrite.empty()) {
+            this->WriteBuffer(decompress, bufferWrite);
+        }
 
+        std::cout << bufferWrite.size() << std::endl;
         decompress.close();
         bin.close();
     }
@@ -505,6 +551,7 @@ namespace huff {
 
             else if ((buffer[i] & 0xF8) == 0xF0)
                 numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
+
             else
                 return false; // Byte inválido
             
