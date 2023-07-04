@@ -20,7 +20,8 @@ void PrintUsage() {
 }
 
 int main(int argc, char* argv[]) {
-    std::string filePath;
+    std::string fileToEncode;
+    std::string fileToDecode;
 
     const char* const shortOptions = "c:d:h";
     const option longOptions[] = {
@@ -39,11 +40,11 @@ int main(int argc, char* argv[]) {
         switch (option) {
             case 'c':
                 compress = true;
-                filePath = optarg;
+                fileToEncode = optarg;
                 break;
             case 'd':
                 decompress = true;
-                filePath = optarg;
+                fileToDecode = optarg;
                 break;
             case 'h':
                 PrintUsage();
@@ -54,21 +55,22 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (compress and decompress) {
-        std::cout << "As opções -c/--compress e -d/--decompress são mutuamente exclusivas." << std::endl;
-        return EXIT_FAILURE;
-    }
-
     std::string outputFileName;
     huff::Compress compressor;
 
+    if (not compress and not decompress) {
+        std::cout << "Nenhuma opção selecionada. Use -c/--compress para compressão ou -d/--decompress para descompressão." << std::endl;
+        PrintUsage();
+        return EXIT_FAILURE;
+    }
+
     if (compress) {
         try {
-            compressor.Encode(filePath);
+            compressor.Encode(fileToEncode);
 
-            std::filesystem::path inputPath(filePath);
-            std::string outputFile = inputPath.stem().string() + ".bin";
-            std::ifstream input(filePath, std::ios::binary);
+            std::filesystem::path inputPath(fileToEncode);
+            std::string outputFile = fileToEncode + ".bin";
+            std::ifstream input(fileToEncode, std::ios::binary);
             std::ifstream output(outputFile, std::ios::binary);
 
             if (input.is_open() and output.is_open()) {
@@ -93,19 +95,15 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
     }
-    else if (decompress) {
+
+    if (decompress) {
         try {
-            compressor.Decode(filePath);
+            compressor.Decode(fileToDecode);
         }
         catch (std::exception &e) {
             std::cerr << e.what() << std::endl;
             return EXIT_FAILURE;
         }
-    }
-    else {
-        std::cout << "Nenhuma opção selecionada. Use -c/--compress para compressão ou -d/--decompress para descompressão." << std::endl;
-        PrintUsage();
-        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
