@@ -25,7 +25,7 @@ namespace huff {
 
             for (unsigned int i = 0; i < string.gcount(); i++) {
 
-                byte = static_cast<unsigned char>(bufferRead[i]);
+                byte = bufferRead[i];
                 bits = std::bitset<8>(byte);
 
                 if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
@@ -47,7 +47,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -66,7 +66,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -76,7 +76,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -95,7 +95,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -105,7 +105,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -115,7 +115,7 @@ namespace huff {
                         string >> std::noskipws >> byte;
 
                     else
-                        byte = static_cast<unsigned char>(bufferRead[i]);
+                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
@@ -343,7 +343,7 @@ namespace huff {
             while (file.read((char*) bufferRead, BUFFER_MAX_SIZE) or file.gcount() > 0) {
 
                 for (unsigned int i = 0; i < file.gcount(); i++) {
-                    byte = static_cast<unsigned char>(bufferRead[i]);
+                    byte = bufferRead[i];
                     bits = std::bitset<8>(byte);
 
                     if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
@@ -359,7 +359,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -375,7 +375,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -385,7 +385,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -401,7 +401,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -411,7 +411,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -421,7 +421,7 @@ namespace huff {
                             file >> std::noskipws >> byte;
 
                         else
-                            byte = static_cast<unsigned char>(bufferRead[i]);
+                            byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -448,7 +448,7 @@ namespace huff {
 
                 // Grava quantos bits são válidos no último byte
                 output.seekp(SIGNATURE.size(), std::ios::beg);
-                unsigned char byte = static_cast<unsigned char>(8 - junkBitsOnLastbyte);
+                unsigned char byte = 8 - junkBitsOnLastbyte;
                 output.write((char*) &byte, sizeof(byte));
             }
             output.close();
@@ -478,11 +478,11 @@ namespace huff {
         file.read((char*) headerSizeBytes, 3);
 
         unsigned int headerSize = 0;
-        headerSize |= static_cast<unsigned int>(headerSizeBytes[0]);
+        headerSize |= headerSizeBytes[0];
         headerSize <<= 8;
-        headerSize |= static_cast<unsigned int>(headerSizeBytes[1]);
+        headerSize |= headerSizeBytes[1];
         headerSize <<= 8;
-        headerSize |= static_cast<unsigned int>(headerSizeBytes[2]);
+        headerSize |= headerSizeBytes[2];
 
         // Grava os dados do cabeçalho em um vector
         Vector<bool> headerData(headerSize * 8); // Vector com tamanho do cabaçalho em bits
@@ -510,7 +510,7 @@ namespace huff {
         this->m_trie.InsertExistingTree(root, numNodes);
 
         // Retorna quantos bits do último byte são válidos
-        return static_cast<unsigned int>(validBitsOnLastByte);
+        return validBitsOnLastByte;
     }
 
     void Compress::Decode(std::string binFile) {
@@ -558,7 +558,7 @@ namespace huff {
             std::streampos currentReadPosition = bin.tellg();
 
             for (unsigned int i = 0; i < bin.gcount(); i++) {
-                byte = static_cast<unsigned char>(buffer[i]);
+                byte = buffer[i];
                 bits = std::bitset<8>(byte);
 
                 bufferRead += bits.to_string();
