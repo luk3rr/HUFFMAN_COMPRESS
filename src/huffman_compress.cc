@@ -6,6 +6,7 @@
 
 #include "huffman_compress.h"
 #include "huffman_compress_excpt.h"
+#include "parser.h"
 
 namespace huff {
     Compress::Compress() { }
@@ -33,97 +34,69 @@ namespace huff {
                     byteSet = bits.to_string();
 
                     // Operadtor de incremento da seg fault em alguns casos quando a chave ainda não existe
-                    if (map.Contains(byteSet))
-                        map[byteSet]++;
-                    else
-                        map[byteSet];
+                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
                 else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
                     byteSet.clear();
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
+                    // Todos os bytes do buffer já foram lidos
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
-                    else
-                        byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
-                    if (map.Contains(byteSet))
-                        map[byteSet]++;
-                    else
-                        map[byteSet];
+                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
                 else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
                     byteSet.clear();
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
-
-                    else
-                        byte = bufferRead[i];
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
-
-                    else
-                        byte = bufferRead[i];
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
-                    if (map.Contains(byteSet))
-                        map[byteSet]++;
-                    else
-                        map[byteSet];
+                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
                 else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
                     byteSet.clear();
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
-
-                    else
-                        byte = bufferRead[i];
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
-
-                    else
-                        byte = bufferRead[i];
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) // Todos os bytes do buffer já foram lidos
-                        string >> std::noskipws >> byte;
-
-                    else
-                        byte = bufferRead[i];
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
 
                     bits = std::bitset<8>(byte);
                     byteSet += bits.to_string();
 
-                    if (map.Contains(byteSet))
-                        map[byteSet]++;
-                    else
-                        map[byteSet];
+                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
             }
         }
@@ -247,17 +220,10 @@ namespace huff {
             // O processo reinicia...
 
             std::string bits = node->m_key;
-            if (bits.size() == 8)
-                buffer += "00";
-
-            else if (bits.size() == 16)
-                buffer += "01";
-
-            else if (bits.size() == 24)
-                buffer += "10";
-
-            else
-                buffer += "11";
+            if (bits.size() == 8) buffer += "00";
+            else if (bits.size() == 16) buffer += "01";
+            else if (bits.size() == 24) buffer += "10";
+            else buffer += "11";
 
             buffer += node->m_key;
             this->WriteBuffer(file, buffer);
@@ -271,21 +237,13 @@ namespace huff {
         }
     }
 
-    void Compress::Encode(std::string fileName) {
-        if (not this->IsUTF8(fileName))
-            throw huffexcpt::IsNotUTF8Encoding(fileName);
+    void Compress::Encode(std::string filename) {
+        Parser::CheckEncodeCompatibility(filename);
 
-        std::ifstream file(fileName, std::ios::binary);
+        std::ifstream file(filename, std::ios::binary);
 
-        if (not file.is_open() or std::filesystem::is_directory(fileName))
-            throw huffexcpt::CouldNotOpenFile(fileName);
-
-        file.seekg(0, std::ifstream::end);
-
-        if (file.tellg() == 0)
-            throw huffexcpt::FileIsEmpty(fileName);
-
-        file.seekg(0, std::ifstream::beg);
+        if (not file.is_open())
+            throw huffexcpt::CouldNotOpenFile(filename);
 
         map::Map<std::string, unsigned int> map;
 
@@ -324,8 +282,8 @@ namespace huff {
         std::bitset<8> bits;
         std::string bufferWrite;
 
-        std::filesystem::path filePath(fileName);
-        std::string outputFile = filePath.parent_path() / (filePath.stem().string() + ".bin");
+        std::filesystem::path filePath(filename);
+        std::string outputFile = filePath.parent_path() / (filePath.stem().string() + filePath.extension().string() + ".bin");
         std::ofstream output(outputFile, std::ios::binary);
 
         if (not output.is_open())
@@ -346,20 +304,17 @@ namespace huff {
                     byte = bufferRead[i];
                     bits = std::bitset<8>(byte);
 
-                    if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
+                    if ((byte & 0x80) == 0) // 0xxxxxxx -> Deve ler 1 byte
                         bufferWrite += this->m_map[bits.to_string()];
 
-                    }
                     else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
                         byteSet.clear();
                         byteSet += bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
+                        // Todos os bytes do buffer já foram lidos
+                        if (i >= file.gcount()) file >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -371,21 +326,15 @@ namespace huff {
                         byteSet += bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
+                        if (i >= file.gcount()) file >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
+                        if (i >= file.gcount()) file >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -397,11 +346,8 @@ namespace huff {
                         byteSet += bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
+                        if (i >= file.gcount()) file >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -417,11 +363,8 @@ namespace huff {
                         byteSet += bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
+                        if (i >= file.gcount()) file >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
@@ -430,9 +373,8 @@ namespace huff {
                     }
                 }
 
-                if (bufferWrite.size() >= BUFFER_MAX_SIZE) {
+                if (bufferWrite.size() >= BUFFER_MAX_SIZE)
                     this->WriteBuffer(output, bufferWrite);
-                }
             }
 
             if (not bufferWrite.empty()) {
@@ -451,6 +393,7 @@ namespace huff {
                 unsigned char byte = 8 - junkBitsOnLastbyte;
                 output.write((char*) &byte, sizeof(byte));
             }
+
             output.close();
             file.close();
 
@@ -466,7 +409,7 @@ namespace huff {
         // Volta a posição de leitura para o inicio do arquivo
         file.seekg(0, std::ios::beg);
 
-        if (not this->CheckSignature(file))
+        if (not Parser::CheckSignature(file))
             throw huffexcpt::InvalidSignature(filename);
 
         // Lê quantos bits do último byte são válidos
@@ -514,26 +457,24 @@ namespace huff {
     }
 
     void Compress::Decode(std::string binFile) {
-        std::ifstream bin(binFile, std::ios::binary);
+        Parser::CheckDecodeCompatibility(binFile);
 
+        std::ifstream bin(binFile, std::ios::binary);
 
         std::filesystem::path filePath(binFile);
 
-        std::string outputFileName = filePath.parent_path() / (filePath.stem().string() + "-decompressed.txt");
-        std::ofstream decompress(outputFileName, std::ios::binary);
+        std::string extension = filePath.extension().string();
+        if (extension.length() >= 4 && extension.substr(extension.length() - 4) == ".bin")
+            filePath.replace_extension("");
 
+        std::string originalFileName = filePath.parent_path() / filePath.stem().string();
+        std::string originalExtension = filePath.extension().string();
+
+        std::string outputFileName = filePath.parent_path() / (filePath.stem().string() + "-decompressed" + originalExtension);
+        std::ofstream decompress(outputFileName, std::ios::binary);
 
         // Obtém a posição atual
         std::streampos binSize = bin.tellg();
-
-        bin.seekg(0, std::ifstream::end);
-        if (bin.tellg() == 0)
-            throw huffexcpt::FileIsEmpty(binFile);
-
-        bin.seekg(0, std::ifstream::beg);
-
-        if (not bin.is_open() or std::filesystem::is_directory(binFile))
-            throw huffexcpt::CouldNotOpenFile(binFile);
 
         if (not decompress.is_open())
             throw huffexcpt::CouldNotOpenFile(outputFileName);
@@ -572,10 +513,7 @@ namespace huff {
                     if (currentReadPosition == endReadPosition and i == bin.gcount() - 1 and bufferPosition == bufferRead.size() - (8 - validBitsOnLastByte))
                         break;
 
-                    if (bufferRead[bufferPosition++] == '1')
-                        current = current->m_right;
-                    else
-                        current = current->m_left;
+                    bufferRead[bufferPosition++] == '1' ? current = current->m_right : current = current->m_left;
 
                     if (current->IsLeaf()) {
                         bufferWrite += current->GetKey();
@@ -587,14 +525,13 @@ namespace huff {
                 }
             }
 
-            if (bufferWrite.size() >= BUFFER_MAX_SIZE) {
+            if (bufferWrite.size() >= BUFFER_MAX_SIZE)
                 this->WriteBuffer(decompress, bufferWrite);
-            }
+
         }
 
-        if (not bufferWrite.empty()) {
+        if (not bufferWrite.empty())
             this->WriteBuffer(decompress, bufferWrite);
-        }
 
         decompress.close();
         bin.close();
@@ -647,51 +584,4 @@ namespace huff {
         return nullptr;
     }
 
-    bool Compress::IsUTF8(std::string filename) {
-        std::ifstream file(filename, std::ios::binary);
-
-        if (not file.is_open())
-            throw huffexcpt::CouldNotOpenFile(filename);
-
-        unsigned char buffer[20];
-        file.read((char*) buffer, sizeof(buffer));
-
-        // Verifica se os bytes indicam um arquivo UTF-8 válido (sem BOM)
-        int numBytes = 0;
-        for (int i = 0; i < file.gcount(); i++) {
-            if ((buffer[i] & 0x80) == 0)
-                numBytes = 1; // Caractere ASCII de 1 byte
-
-            else if ((buffer[i] & 0xE0) == 0xC0)
-                numBytes = 2; // Inicia sequência de 2 bytes
-
-            else if ((buffer[i] & 0xF0) == 0xE0)
-                numBytes = 3; // Inicia sequência de 3 bytes
-
-            else if ((buffer[i] & 0xF8) == 0xF0)
-                numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
-
-            else
-                return false; // Byte inválido
-
-            for (int j = 1; j < numBytes; j++) {
-                if (i + j >= file.gcount()) {
-                    return false; // Fim prematuro do arquivo
-                }
-                if ((buffer[i + j] & 0xC0) != 0x80) {
-                    return false; // Caractere mal formado
-                }
-            }
-
-            i += numBytes - 1;
-        }
-        return true;
-    }
-
-    bool Compress::CheckSignature(std::ifstream &file) {
-        char buffer[SIGNATURE.size()];
-        file.read(buffer, sizeof(buffer));
-
-        return std::string(buffer, SIGNATURE.size()) == SIGNATURE;
-    }
 }

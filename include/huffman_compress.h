@@ -12,11 +12,10 @@
 #include <bitset>
 #include <exception>
 #include <ios>
-#include "chrono"
+#include <chrono>
 #include <string>
 #include <filesystem>
 #include <cstddef>
-#include <string>
 
 #include "huffman_trie.h"
 #include "huffman_compress_excpt.h"
@@ -25,7 +24,7 @@
 #include "priority_queue_min.h"
 #include "map.h"
 #include "vector.h"
-
+#include "parser.h"
 
 const std::string SIGNATURE = "HUFF"; // Assinatura do arquivo comprimido
 const std::size_t BUFFER_MAX_SIZE = 1024 * 16; // 16 KB
@@ -97,19 +96,6 @@ namespace huff {
              * @param numNodes Número de nós atualmente na árvore
              **/
             Node<std::string> *RebuildTrie(std::ifstream &file, Vector<bool> &headerData, unsigned int &pos, unsigned int &numNodes);
-
-            /**
-             * @brief Diz se um arquivo está codificado como UTF-8
-             * @param file Nome do arquivo que será verificado
-             **/
-            bool IsUTF8(std::string file);
-
-            /**
-             * @brief Diz se um arquivo contém a assinatura do programa
-             *        Somente arquivos que contém essa assinatura podem ser descompactados
-             * @param file Arquivo que será lido
-             **/
-            bool CheckSignature(std::ifstream &file);
 
         public:
             Compress();

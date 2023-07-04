@@ -31,6 +31,7 @@ MAIN = $(OBJ_DIR)/main.o
 PROGRAM_OBJS =	$(OBJ_DIR)/binary_tree_excpt.o \
 				$(OBJ_DIR)/huffman_compress.o \
 				$(OBJ_DIR)/huffman_trie.o \
+				$(OBJ_DIR)/parser.o \
 				$(OBJ_DIR)/huffman_compress_excpt.o \
 				$(OBJ_DIR)/node_singly_linked.o \
 				$(OBJ_DIR)/node_trie.o \
