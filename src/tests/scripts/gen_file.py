@@ -7,40 +7,59 @@
 import random
 import string
 import sys
+import os
 
 MEGABYTE = 1024 ** 2
 BUFFER_MAX_SIZE = MEGABYTE
 WORD_MAX_LENGTH = 20
 
-def WriteBuffer(filename, buffer):
-    with open(filename, 'a', encoding='utf-8') as file:
-        file.write(buffer)
+BENCHMARK_DIR = os.path.expanduser("~/Projects/HUFF_COMPRESS/src/tests/scripts/")
+INPUT_DIR = BENCHMARK_DIR + "inputs/"
+
+def WriteBuffer(file, buffer):
+    file.write(buffer)
 
 # filesize em MB
 def GenTextFile(filesize):
     totalsize = filesize * MEGABYTE
     filename = "random-" + str(filesize) + "MB.txt"
     words = []
+    lines = []
     currentSize = 0
     bufferSize = 0
 
-    while currentSize < totalsize:
-        word_length = random.randint(1, WORD_MAX_LENGTH)
-        word = ''.join(random.choices(string.ascii_letters, k=word_length))
-        words.append(word)
-        bufferSize += word_length + 1  # Adicionar 1 para o espaço em branco
-        currentSize += word_length + 1
+    filepath = os.path.join(INPUT_DIR, filename)
 
-        if bufferSize >= BUFFER_MAX_SIZE:
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    with open(INPUT_DIR + filename, 'a', encoding='utf-8') as file:
+        while currentSize < totalsize:
+            word_length = random.randint(1, WORD_MAX_LENGTH)
+            word = ''.join(random.choices(string.ascii_letters, k=word_length))
+            words.append(word)
+            bufferSize += word_length + 1  # Adicionar 1 para o espaço em branco
+            currentSize += word_length + 1
+
+            if bufferSize >= BUFFER_MAX_SIZE:
+                encoded_text = ' '.join(words)
+
+                for i in range(0, len(encoded_text), 120):
+                    line = encoded_text[i:i + 120] + '\n'
+                    lines.append(line)
+                    currentSize += 1
+
+                    if currentSize >= totalsize:
+                        break
+
+                WriteBuffer(file, ''.join(lines))
+                lines.clear()
+                words.clear()
+                bufferSize = 0
+
+        if words:
             encoded_text = ' '.join(words)
-            WriteBuffer(filename, encoded_text + ' ')
-
-            words = []
-            bufferSize = 0
-
-    if words:
-        encoded_text = ' '.join(words)
-        WriteBuffer(filename, encoded_text)
+            WriteBuffer(file, encoded_text)
 
 def main():
     if len(sys.argv) < 2:

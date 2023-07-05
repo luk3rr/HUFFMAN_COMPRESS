@@ -8,6 +8,7 @@ import os
 import glob
 import subprocess
 import time
+import sys
 import hashlib
 import matplotlib.pyplot as plt
 
@@ -15,13 +16,21 @@ import matplotlib.pyplot as plt
 
 MEGABYTE = 1024 * 1024
 
+FILE_INPUT_MAX_SIZE = 100 # em MB
+AMOUNT_OF_INPUTS = 50
+
+GAP_BETWEEN_FILE_INPUT_SIZE = FILE_INPUT_MAX_SIZE / AMOUNT_OF_INPUTS
+
 BENCHMARK_DIR = os.path.expanduser("~/Projects/HUFF_COMPRESS/src/tests/scripts/")
 EXE_FILE = os.path.expanduser("~/Projects/HUFF_COMPRESS/bin/program")
+
 INPUT_DIR = BENCHMARK_DIR + "inputs/"
 PNG_DIR = BENCHMARK_DIR + "graphics/"
 DAT_DIR = BENCHMARK_DIR + "dat/"
 
-TEST_OUTPUT_FILE = BENCHMARK_DIR + "tests.txt"
+dirs = [INPUT_DIR, PNG_DIR, DAT_DIR]
+
+VERIFICATION_RESULT_FILE = BENCHMARK_DIR + "tests.txt"
 
 COMP_TIMES_FILE = DAT_DIR + "compression_times.dat"
 DECOMP_TIMES_FILE = DAT_DIR + "decompression_times.dat"
@@ -31,98 +40,166 @@ COMP_PNG_FILE = PNG_DIR + "compression_times.png"
 DECOMP_PNG_FILE = PNG_DIR + "decompression_times.png"
 RATE_PNG_FILE = PNG_DIR + "compression_rates.png"
 
-files_to_remove = [
-    COMP_TIMES_FILE,
-    DECOMP_TIMES_FILE,
-    COMP_RATE_FILE,
-    COMP_PNG_FILE,
-    DECOMP_PNG_FILE,
-    RATE_PNG_FILE,
-    TEST_OUTPUT_FILE,
-]
 
-files_to_remove.extend(glob.glob(INPUT_DIR + "/*decompressed*"))
-files_to_remove.extend(glob.glob(INPUT_DIR + "/*.bin"))
+def RemoveFiles(rmFiles):
+    """
+    Brief:
+        Deleta todos os arquivos em um array
+    Args:
+        rmFiles: Lista de arquivos que serão deletados
+    """
+    for file in rmFiles:
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            pass
 
-for file in files_to_remove:
-    try:
-        os.remove(file)
-    except FileNotFoundError:
-        pass
+def CreateNecessaryDirs():
+    """
+    Brief
+        Cria os diretórios necessários para os testes
+    """
+    for directory in dirs:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-# Pega os arquivos no diretório por ordem de tamanho em bytes
-for file in sorted(os.listdir(INPUT_DIR), key=lambda f: os.path.getsize(os.path.join(INPUT_DIR, f))):
-    filePath = os.path.join(INPUT_DIR, file)
-    fileSize = os.path.getsize(filePath) // MEGABYTE
+def GenInputFiles():
+    """
+    Brief
+        Gera os arquivos necessários para os testes, caso eles não estejam disponíveis
+    """
+    print("Gerando os arquivos faltantes...")
+    for i in range(0, AMOUNT_OF_INPUTS):
+        filesize = i * GAP_BETWEEN_FILE_INPUT_SIZE
+        filepath = os.path.join(INPUT_DIR, f"random-{filesize:.1f}MB.txt")
 
-    t0 = time.time()
-    subprocess.run([EXE_FILE, "-c", filePath], stdout=subprocess.DEVNULL)
-    t1 = time.time()
+        if not os.path.isfile(filepath):
+            subprocess.call(["python3", str(BENCHMARK_DIR + "gen_file.py"), str(filesize)], stdout=subprocess.DEVNULL)
 
-    execution_time = t1 - t0
-    with open(COMP_TIMES_FILE, "a") as f:
-        f.write(f"{fileSize} {execution_time}\n")
+        sys.stdout.write(f"Progresso: {i * 100 / AMOUNT_OF_INPUTS}%")
+        sys.stdout.flush()
+        sys.stdout.write('\r')
 
-    binFile = filePath + ".bin"
-    binSize = os.path.getsize(binFile) // MEGABYTE
+def CheckIntegrity(originalFile, decompressedFile):
+    """
+    Brief:
+        Verifica a integridade do arquivo descompactado
+    Args:
+        originalFile: Arquivo original que foi compactado
+        decompressedFile: Arquivo que foi descompactado
+    """
+    with open(VERIFICATION_RESULT_FILE, 'a') as f:
+        if os.path.isfile(originalFile) and os.path.isfile(decompressedFile):
+            original_hash = hashlib.sha256()
+            decompressed_hash = hashlib.sha256()
 
-    compressionRate = (fileSize - binSize) / fileSize * 100
-    with open(COMP_RATE_FILE, "a") as f:
-        f.write(f"{fileSize} {compressionRate}\n")
+            with open(originalFile, "rb") as fileObj:
+                original_data = fileObj.read()
+                original_hash.update(original_data)
 
-    t0 = time.time()
-    subprocess.run([EXE_FILE, "-d", binFile], stdout=subprocess.DEVNULL)
-    t1 = time.time()
+            with open(decompressedFile, "rb") as fileObj:
+                decompressed_data = fileObj.read()
+                decompressed_hash.update(decompressed_data)
 
-    execution_time = t1 - t0
-    with open(DECOMP_TIMES_FILE, "a") as f:
-        f.write(f"{fileSize} {execution_time}\n")
+            if original_hash.digest() == decompressed_hash.digest():
+                result = f"{os.path.basename(originalFile)}: PASS (Size: {os.path.getsize(originalFile) // MEGABYTE} MB)"
+            else:
+                result = f"{os.path.basename(originalFile)}: FAIL"
 
-with open(TEST_OUTPUT_FILE, "w") as f:
-    for filename in sorted(os.listdir(INPUT_DIR), key=lambda f: os.path.getsize(os.path.join(INPUT_DIR, f))):
-        if filename.endswith(".txt"):
-            original_file = os.path.join(INPUT_DIR, filename)
-            decompressed_file = os.path.join(INPUT_DIR, filename.replace(".txt", "-decompressed.txt"))
+            f.write(result + "\n")
 
-            if os.path.isfile(original_file) and os.path.isfile(decompressed_file):
-                original_hash = hashlib.sha256()
-                decompressed_hash = hashlib.sha256()
+def RunTests():
+    """
+    Brief
+        Realiza os testes de compressão, descompressão e taxa de compressão
+    """
 
-                with open(original_file, "rb") as fileObj:
-                    original_data = fileObj.read()
-                    original_hash.update(original_data)
+    # Remove arquivos de testes anteriores
+    rmFiles = [
+        COMP_TIMES_FILE,
+        DECOMP_TIMES_FILE,
+        COMP_RATE_FILE,
+        COMP_PNG_FILE,
+        DECOMP_PNG_FILE,
+        RATE_PNG_FILE,
+        VERIFICATION_RESULT_FILE,
+    ]
 
-                with open(decompressed_file, "rb") as fileObj:
-                    decompressed_data = fileObj.read()
-                    decompressed_hash.update(decompressed_data)
+    rmFiles.extend(glob.glob(INPUT_DIR + "/*decompressed*"))
+    rmFiles.extend(glob.glob(INPUT_DIR + "/*.bin"))
 
-                if original_hash.digest() == decompressed_hash.digest():
-                    result = f"{os.path.basename(filename)}: PASS (Size: {os.path.getsize(original_file)} bytes)"
-                else:
-                    result = f"{os.path.basename(filename)}: FAIL"
+    RemoveFiles(rmFiles)
 
-                f.write(result + "\n")
+    print("Realizando os testes de compressão, descompressão e taxa de compressão...")
 
-# Plota os gráficos
-data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])
-plt.plot(*data, marker="o")
-plt.xlabel("Tamanho do arquivo (MB)")
-plt.ylabel("Tempo para a compressão (s)")
-plt.savefig(COMP_PNG_FILE)
-plt.close()
+    files = sorted(os.listdir(INPUT_DIR), key=lambda f: os.path.getsize(os.path.join(INPUT_DIR, f)))
 
-data = zip(*[map(float, line.split()) for line in open(DECOMP_TIMES_FILE)])
-plt.plot(*data, marker="o")
-plt.xlabel("Tamanho do arquivo (MB)")
-plt.ylabel("Tempo para a descompressão (s)")
-plt.savefig(DECOMP_PNG_FILE)
-plt.close()
+    for i, file in enumerate(files):
+        filePath = os.path.join(INPUT_DIR, file)
+        fileSize = os.path.getsize(filePath) // MEGABYTE
 
-data = zip(*[map(float, line.split()) for line in open(COMP_RATE_FILE)])
-plt.plot(*data, marker="o")
-plt.xlabel("Tamanho do arquivo original (MB)")
-plt.ylabel("Taxa de compressão (%)")
-plt.savefig(RATE_PNG_FILE)
-plt.close()
+        t0 = time.time()
+        subprocess.run([EXE_FILE, "-c", filePath], stdout=subprocess.DEVNULL)
+        t1 = time.time()
 
-print("Test battery completed!")
+        execution_time = t1 - t0
+        with open(COMP_TIMES_FILE, "a") as f:
+            f.write(f"{fileSize} {execution_time}\n")
+
+        binFile = filePath + ".bin"
+        binSize = os.path.getsize(binFile) // MEGABYTE
+
+        compressionRate = (fileSize - binSize) / fileSize * 100
+        with open(COMP_RATE_FILE, "a") as f:
+            f.write(f"{fileSize} {compressionRate}\n")
+
+        t0 = time.time()
+        subprocess.run([EXE_FILE, "-d", binFile], stdout=subprocess.DEVNULL)
+        t1 = time.time()
+
+        execution_time = t1 - t0
+        with open(DECOMP_TIMES_FILE, "a") as f:
+            f.write(f"{fileSize} {execution_time}\n")
+
+        progress = (i + 1) * 100 / len(files)
+        sys.stdout.write(f"Progresso: {progress:.2f}%")
+        sys.stdout.flush()
+        sys.stdout.write('\r')
+
+        decompressedFile = os.path.join(INPUT_DIR, filePath.replace(".txt", "-decompressed.txt"))
+
+        CheckIntegrity(filePath, decompressedFile)
+
+        os.remove(binFile)
+        os.remove(decompressedFile)
+
+def PlotAnalysis():
+    data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])
+    plt.plot(*data, marker="o")
+    plt.xlabel("Tamanho do arquivo (MB)")
+    plt.ylabel("Tempo para a compressão (s)")
+    plt.savefig(COMP_PNG_FILE)
+    plt.close()
+
+    data = zip(*[map(float, line.split()) for line in open(DECOMP_TIMES_FILE)])
+    plt.plot(*data, marker="o")
+    plt.xlabel("Tamanho do arquivo (MB)")
+    plt.ylabel("Tempo para a descompressão (s)")
+    plt.savefig(DECOMP_PNG_FILE)
+    plt.close()
+
+    data = zip(*[map(float, line.split()) for line in open(COMP_RATE_FILE)])
+    plt.plot(*data, marker="o")
+    plt.xlabel("Tamanho do arquivo original (MB)")
+    plt.ylabel("Taxa de compressão (%)")
+    plt.savefig(RATE_PNG_FILE)
+    plt.close()
+
+def Main():
+    CreateNecessaryDirs()
+    GenInputFiles()
+    RunTests()
+    PlotAnalysis()
+
+if __name__ == "__main__":
+    Main()

@@ -1,3 +1,7 @@
 bin/program
 bin/test
+src/tests/scripts/inputs/
+src/tests/scripts/dat/
+src/tests/scripts/graphics/
+src/tests/scripts/tests.txt
 *.o
