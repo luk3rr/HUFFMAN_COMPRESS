@@ -4,12 +4,12 @@
 * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
 */
 
-#include <cstdlib>
 #include "huffman_compress.h"
 #include <exception>
 #include <iostream>
 #include <string>
 #include <getopt.h>
+#include <cstdlib>
 
 void PrintUsage() {
     std::cout << "Huffman Compress" << std::endl;

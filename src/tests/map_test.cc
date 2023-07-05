@@ -117,19 +117,15 @@ TEST_CASE("Mudar valores") {
     CHECK(map.IsEmpty());
 }
 
-// TODO: Corrigir: Em alguns casos de acesso com o operador [], caso a chave ainda não existe, ocorre o erro de segmentação
+// TODO: Corrigir: Em alguns casos de acesso com o operador [], caso a chave ainda não exista, ocorre o erro de segmentação
 TEST_CASE("Incremento") {
     map::Map<char, unsigned int> map;
 
     std::string palavra = "PARDSCDACACMZNSDI@!*@#";
 
     for (char &letra : palavra) {
-        if (map.Contains(letra)) {
-            map[letra]++;
-        }
-        else {
-            map[letra];
-        }
+        if (map.Contains(letra)) map[letra]++;
+        else map[letra];
     }
 
     map.Clear();

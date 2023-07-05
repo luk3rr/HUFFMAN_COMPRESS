@@ -5,8 +5,6 @@
 */
 
 #include "huffman_compress.h"
-#include "huffman_compress_excpt.h"
-#include "parser.h"
 
 namespace huff {
     Compress::Compress() { }
@@ -533,6 +531,7 @@ namespace huff {
         if (not bufferWrite.empty())
             this->WriteBuffer(decompress, bufferWrite);
 
+        delete[] buffer;
         decompress.close();
         bin.close();
 

@@ -76,7 +76,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc
 
 valgrind: tests build
 	valgrind --leak-check=full $(BIN_DIR)/$(TEST_NAME) > /dev/null
-	valgrind --leak-check=full $(BIN_DIR)/$(PROGRAM_NAME)
+	valgrind --leak-check=full $(BIN_DIR)/$(PROGRAM_NAME) -c src/tests/inputs/japanese-4bytes.txt -d src/tests/inputs/japanese-4bytes.txt.bin
+	rm -f src/tests/inputs/japanese-4bytes.txt.bin src/tests/inputs/japanese-4bytes-decompressed.txt
 
 clean:
 	rm -f $(BIN_DIR)/* $(OBJ_DIR)/* gmon.out

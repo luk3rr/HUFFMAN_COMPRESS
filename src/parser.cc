@@ -15,28 +15,20 @@ namespace huff {
         // Verifica se os bytes indicam um arquivo UTF-8 válido (sem BOM)
         int numBytes = 0;
         for (int i = 0; i < file.gcount(); i++) {
-            if ((buffer[i] & 0x80) == 0)
-                numBytes = 1; // Caractere ASCII de 1 byte
+            if ((buffer[i] & 0x80) == 0) numBytes = 1; // Caractere ASCII de 1 byte
 
-            else if ((buffer[i] & 0xE0) == 0xC0)
-                numBytes = 2; // Inicia sequência de 2 bytes
+            else if ((buffer[i] & 0xE0) == 0xC0) numBytes = 2; // Inicia sequência de 2 bytes
 
-            else if ((buffer[i] & 0xF0) == 0xE0)
-                numBytes = 3; // Inicia sequência de 3 bytes
+            else if ((buffer[i] & 0xF0) == 0xE0) numBytes = 3; // Inicia sequência de 3 bytes
 
-            else if ((buffer[i] & 0xF8) == 0xF0)
-                numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
+            else if ((buffer[i] & 0xF8) == 0xF0) numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
 
-            else
-                return false; // Byte inválido
+            else return false; // Byte inválido
 
             for (int j = 1; j < numBytes; j++) {
-                if (i + j >= file.gcount()) {
-                    return false; // Fim prematuro do arquivo
-                }
-                if ((buffer[i + j] & 0xC0) != 0x80) {
-                    return false; // Caractere mal formado
-                }
+                if (i + j >= file.gcount()) return false; // Fim prematuro do arquivo
+
+                if ((buffer[i + j] & 0xC0) != 0x80) return false; // Caractere mal formado
             }
 
             i += numBytes - 1;
