@@ -235,13 +235,13 @@ namespace huff {
         }
     }
 
-    void Compress::Encode(std::string filename) {
-        Parser::CheckEncodeCompatibility(filename);
+    void Compress::Encode(std::string intput, std::string output) {
+        Parser::CheckEncodeCompatibility(intput);
 
-        std::ifstream file(filename, std::ios::binary);
+        std::ifstream file(intput, std::ios::binary);
 
         if (not file.is_open())
-            throw huffexcpt::CouldNotOpenFile(filename);
+            throw huffexcpt::CouldNotOpenFile(intput);
 
         map::Map<std::string, unsigned int> map;
 
@@ -280,20 +280,18 @@ namespace huff {
         std::bitset<8> bits;
         std::string bufferWrite;
 
-        std::filesystem::path filePath(filename);
-        std::string outputFile = filePath.parent_path() / (filePath.stem().string() + filePath.extension().string() + ".bin");
-        std::ofstream output(outputFile, std::ios::binary);
+        std::ofstream out(output, std::ios::binary);
 
-        if (not output.is_open())
-            throw huffexcpt::CouldNotOpenFile(outputFile);
+        if (not out.is_open())
+            throw huffexcpt::CouldNotOpenFile(output);
 
         unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
 
         // Medição do tempo de compressão do arquivo
         start = std::chrono::high_resolution_clock::now();
-        if (output.is_open()) {
+        if (out.is_open()) {
             // Escreve o cabeçalho do arquivo
-            output.seekp(this->WriteHeader(output));
+            out.seekp(this->WriteHeader(out));
 
             // Inicia a escrita dos dados codificiados
             while (file.read((char*) bufferRead, BUFFER_MAX_SIZE) or file.gcount() > 0) {
@@ -372,7 +370,7 @@ namespace huff {
                 }
 
                 if (bufferWrite.size() >= BUFFER_MAX_SIZE)
-                    this->WriteBuffer(output, bufferWrite);
+                    this->WriteBuffer(out, bufferWrite);
             }
 
             if (not bufferWrite.empty()) {
@@ -384,15 +382,15 @@ namespace huff {
                         junkBitsOnLastbyte++;
                     }
                 }
-                this->WriteBuffer(output, bufferWrite);
+                this->WriteBuffer(out, bufferWrite);
 
                 // Grava quantos bits são válidos no último byte
-                output.seekp(SIGNATURE.size(), std::ios::beg);
+                out.seekp(SIGNATURE.size(), std::ios::beg);
                 unsigned char byte = 8 - junkBitsOnLastbyte;
-                output.write((char*) &byte, sizeof(byte));
+                out.write((char*) &byte, sizeof(byte));
             }
 
-            output.close();
+            out.close();
             file.close();
 
             delete[] bufferRead;
@@ -454,30 +452,19 @@ namespace huff {
         return validBitsOnLastByte;
     }
 
-    void Compress::Decode(std::string binFile) {
-        Parser::CheckDecodeCompatibility(binFile);
+    void Compress::Decode(std::string input, std::string output) {
+        Parser::CheckDecodeCompatibility(input);
 
-        std::ifstream bin(binFile, std::ios::binary);
-
-        std::filesystem::path filePath(binFile);
-
-        std::string extension = filePath.extension().string();
-        if (extension.length() >= 4 && extension.substr(extension.length() - 4) == ".bin")
-            filePath.replace_extension("");
-
-        std::string originalFileName = filePath.parent_path() / filePath.stem().string();
-        std::string originalExtension = filePath.extension().string();
-
-        std::string outputFileName = filePath.parent_path() / (filePath.stem().string() + "-decompressed" + originalExtension);
-        std::ofstream decompress(outputFileName, std::ios::binary);
+        std::ifstream bin(input, std::ios::binary);
+        std::ofstream out(output, std::ios::binary);
 
         // Obtém a posição atual
         std::streampos binSize = bin.tellg();
 
-        if (not decompress.is_open())
-            throw huffexcpt::CouldNotOpenFile(outputFileName);
+        if (not out.is_open())
+            throw huffexcpt::CouldNotOpenFile(output);
 
-        unsigned int validBitsOnLastByte = this->ReadHeader(bin, binFile);
+        unsigned int validBitsOnLastByte = this->ReadHeader(bin, input);
 
         Node<std::string> *current = this->m_trie.GetRoot();
 
@@ -524,15 +511,15 @@ namespace huff {
             }
 
             if (bufferWrite.size() >= BUFFER_MAX_SIZE)
-                this->WriteBuffer(decompress, bufferWrite);
+                this->WriteBuffer(out, bufferWrite);
 
         }
 
         if (not bufferWrite.empty())
-            this->WriteBuffer(decompress, bufferWrite);
+            this->WriteBuffer(out, bufferWrite);
 
         delete[] buffer;
-        decompress.close();
+        out.close();
         bin.close();
 
         auto end = std::chrono::high_resolution_clock::now();

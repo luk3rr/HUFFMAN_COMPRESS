@@ -106,13 +106,13 @@ namespace huff {
              * @brief Realiza a compressão do arquivo
              * @param file Arquivo que será comprimido
              **/
-            void Encode(std::string file);
+            void Encode(std::string intput, std::string output);
 
             /**
              * @brief Realiza a descompressão do arquivo
              * @param file Arquivo que será descomprimido
              **/
-            void Decode(std::string file);
+            void Decode(std::string intput, std::string output);
     };
 }
 

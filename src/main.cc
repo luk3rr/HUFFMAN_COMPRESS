@@ -11,74 +11,36 @@
 #include <getopt.h>
 #include <cstdlib>
 
-void PrintUsage() {
-    std::cout << "Huffman Compress" << std::endl;
-    std::cout << "Opções:" << std::endl;
-    std::cout << "  -c, --compress    Comprimir o arquivo" << std::endl;
-    std::cout << "  -d, --decompress  Descomprimir o arquivo" << std::endl;
-    std::cout << "  -h, --help        Exibir esta mensagem de ajuda" << std::endl;
-}
-
 int main(int argc, char* argv[]) {
-    std::string fileToEncode;
-    std::string fileToDecode;
+    std::string output;
 
-    const char* const shortOptions = "c:d:h";
-    const option longOptions[] = {
-        {"compress", required_argument, nullptr, 'c'},
-        {"decompress", required_argument, nullptr, 'd'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}
-    };
-
-    int option;
-    int optionIndex = -1;
-    bool compress = false;
-    bool decompress = false;
-
-    while ((option = getopt_long(argc, argv, shortOptions, longOptions, &optionIndex)) != -1) {
-        switch (option) {
-            case 'c':
-                compress = true;
-                fileToEncode = optarg;
-                break;
-            case 'd':
-                decompress = true;
-                fileToDecode = optarg;
-                break;
-            case 'h':
-                PrintUsage();
-                return EXIT_SUCCESS;
-            default:
-                PrintUsage();
-                return EXIT_FAILURE;
-        }
-    }
-
-    std::string outputFileName;
     huff::Compress compressor;
 
-    if (not compress and not decompress) {
-        std::cout << "Nenhuma opção selecionada. Use -c/--compress para compressão ou -d/--decompress para descompressão." << std::endl;
-        PrintUsage();
+    if (argc < 4 or (not (std::string(argv[1]) == "-c" or std::string(argv[1]) == "-d"))) {
+        std::cout << "Use:" << std::endl;
+        std::cout << "-c <arquivo-que-sera-comprimido> <nome-arquivo-saida>" << std::endl;
+        std::cout << "-d <arquivo-que-sera-descomprimido> <nome-arquivo-saida>" << std::endl;
         return EXIT_FAILURE;
     }
 
-    if (compress) {
+    if (std::string(argv[1]) == "-c") {
+        std::string fileToEncode = std::string(argv[2]);
+        output = std::string(argv[3]);
+
         try {
-            compressor.Encode(fileToEncode);
+
+            compressor.Encode(fileToEncode, output);
 
             std::filesystem::path inputPath(fileToEncode);
-            std::string outputFile = fileToEncode + ".bin";
-            std::ifstream input(fileToEncode, std::ios::binary);
-            std::ifstream output(outputFile, std::ios::binary);
+            std::ifstream in(fileToEncode, std::ios::binary);
+            std::ifstream out(output, std::ios::binary);
 
-            if (input.is_open() and output.is_open()) {
-                input.seekg(0, std::ios::end);
-                std::streampos inputSize = input.tellg();
+            if (in.is_open() and out.is_open()) {
+                in.seekg(0, std::ios::end);
+                std::streampos inputSize = in.tellg();
 
-                output.seekg(0, std::ios::end);
-                std::streampos outputSize = output.tellg();
+                out.seekg(0, std::ios::end);
+                std::streampos outputSize = out.tellg();
 
                 if (inputSize > outputSize) {
                     double compressionRate = ((inputSize - outputSize) / static_cast<double>(inputSize)) * 100;
@@ -86,8 +48,8 @@ int main(int argc, char* argv[]) {
                     std::cout << "Taxa de compressão: " << compressionRate << "%" << std::endl;
                 }
 
-                input.close();
-                output.close();
+                in.close();
+                out.close();
             }
         }
         catch (std::exception &e) {
@@ -95,10 +57,11 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
     }
-
-    if (decompress) {
+    else if (std::string(argv[1]) == "-d") {
         try {
-            compressor.Decode(fileToDecode);
+            std::string fileToDecode = std::string(argv[2]);
+            output = std::string(argv[3]);
+            compressor.Decode(fileToDecode, output);
         }
         catch (std::exception &e) {
             std::cerr << e.what() << std::endl;
