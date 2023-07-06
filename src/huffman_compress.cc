@@ -380,15 +380,15 @@ namespace huff {
                 unsigned int junkBitsOnLastbyte = 0;
                 if (bufferWrite.size() % 8 != 0) {
                     while (bufferWrite.size() % 8 != 0) {
-                        bufferWrite += "0";
+                        bufferWrite += "1";
                         junkBitsOnLastbyte++;
                     }
                 }
                 this->WriteBuffer(output, bufferWrite);
 
-                // Grava quantos bits são válidos no último byte
+                // Grava quantos bits são inválidos no último byte
                 output.seekp(SIGNATURE.size(), std::ios::beg);
-                unsigned char byte = 8 - junkBitsOnLastbyte;
+                unsigned char byte = junkBitsOnLastbyte;
                 output.write((char*) &byte, sizeof(byte));
             }
 
@@ -477,7 +477,7 @@ namespace huff {
         if (not decompress.is_open())
             throw huffexcpt::CouldNotOpenFile(outputFileName);
 
-        unsigned int validBitsOnLastByte = this->ReadHeader(bin, binFile);
+        unsigned int junkBitsOnLastByte = this->ReadHeader(bin, binFile);
 
         Node<std::string> *current = this->m_trie.GetRoot();
 
@@ -508,7 +508,7 @@ namespace huff {
                     // causavam um percorrimento na árvore e consequente inserção de um caractere aleatório no fim do arquivo
                     // descompactado
                     // IF (o último byte está no buffer AND está iterando no último byte AND e o último bit válido já foi lido)
-                    if (currentReadPosition == endReadPosition and i == bin.gcount() - 1 and bufferPosition == bufferRead.size() - (8 - validBitsOnLastByte))
+                    if (currentReadPosition == endReadPosition and i == bin.gcount() - 1 and bufferPosition == bufferRead.size() - junkBitsOnLastByte)
                         break;
 
                     bufferRead[bufferPosition++] == '1' ? current = current->m_right : current = current->m_left;
@@ -525,7 +525,6 @@ namespace huff {
 
             if (bufferWrite.size() >= BUFFER_MAX_SIZE)
                 this->WriteBuffer(decompress, bufferWrite);
-
         }
 
         if (not bufferWrite.empty())
