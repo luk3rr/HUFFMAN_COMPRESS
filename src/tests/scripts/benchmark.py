@@ -69,7 +69,7 @@ def GenInputFiles():
         Gera os arquivos necessários para os testes, caso eles não estejam disponíveis
     """
     print("Gerando os arquivos faltantes...")
-    for i in range(0, AMOUNT_OF_INPUTS):
+    for i in range(1, AMOUNT_OF_INPUTS):
         filesize = i * GAP_BETWEEN_FILE_INPUT_SIZE
         filepath = os.path.join(INPUT_DIR, f"random-{filesize:.1f}MB.txt")
 
@@ -93,6 +93,7 @@ def CheckIntegrity(originalFile, decompressedFile):
             original_hash = hashlib.sha256()
             decompressed_hash = hashlib.sha256()
 
+
             with open(originalFile, "rb") as fileObj:
                 original_data = fileObj.read()
                 original_hash.update(original_data)
@@ -103,10 +104,14 @@ def CheckIntegrity(originalFile, decompressedFile):
 
             if original_hash.digest() == decompressed_hash.digest():
                 result = f"{os.path.basename(originalFile)}: PASS (Size: {os.path.getsize(originalFile) // MEGABYTE} MB)"
+                passed = True
             else:
                 result = f"{os.path.basename(originalFile)}: FAIL"
+                passed = False
 
             f.write(result + "\n")
+
+            return passed
 
 def RunTests():
     """
@@ -168,10 +173,11 @@ def RunTests():
 
         decompressedFile = os.path.join(INPUT_DIR, filePath.replace(".txt", "-decompressed.txt"))
 
-        CheckIntegrity(filePath, decompressedFile)
+        passed = CheckIntegrity(filePath, decompressedFile)
 
-        os.remove(binFile)
-        os.remove(decompressedFile)
+        if passed:
+            os.remove(binFile)
+            os.remove(decompressedFile)
 
 def PlotAnalysis():
     data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])

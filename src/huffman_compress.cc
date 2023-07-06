@@ -185,7 +185,7 @@ namespace huff {
 
         if (headerBuffer.size() % 8 != 0) { // Sobrou bits para serem gravados, completa com 1 é grava
             while (headerBuffer.size() % 8 != 0) {
-                headerBuffer += "1";
+                headerBuffer += "0";
             }
             this->WriteBuffer(file, headerBuffer);
         }
@@ -208,21 +208,6 @@ namespace huff {
         if (node->IsLeaf()) {
             // bit 1 -> Nó folha
             buffer += "1";
-
-            // Determina a quantidade de bits que forma o caractere atual
-            // A representação é a seguinte:
-            // O primeiro conjunto de 0's representa se o nó é interno
-            // O primeiro 1 encontrado significa que um nó folha foi encontrado
-            // Os próximos dois bits são reservados para dizer quantos bits forma o caractere codificado nesse nó folha
-            // e.g.: [0...] 1 [xx] [8bits, 16bits, 24bits ou 32bits]...
-            // O processo reinicia...
-
-            std::string bits = node->m_key;
-            if (bits.size() == 8) buffer += "00";
-            else if (bits.size() == 16) buffer += "01";
-            else if (bits.size() == 24) buffer += "10";
-            else buffer += "11";
-
             buffer += node->m_key;
             this->WriteBuffer(file, buffer);
         }
@@ -539,44 +524,59 @@ namespace huff {
     }
 
     Node<std::string> *Compress::RebuildTrie(std::ifstream &file, Vector<bool> &headerData, unsigned int &pos, unsigned int &numNodes) {
-        if (pos < headerData.Size()) {
-            if (headerData[++pos]) {
-                // Nó folha
-                if (pos + 2 <= headerData.Size()) {
-                    unsigned int charSize = 0;
+        if (pos + 7 >= headerData.Size())
+            return nullptr;
 
-                    // Verifica os próximos dois bits que dizem quantos bits formam o próximo caractere
-                    if (headerData[++pos] == 0) { // 0x
-                        if (headerData[++pos] == 0) charSize = 8; // 00 -> 8bits
-                        else charSize = 16; // 01 -> 16bits
-                    }
-                    else { // 1x
-                        if (headerData[++pos] == 0) charSize = 24; // 10 -> 24bits
-                        else charSize = 32; // 11 -> 32bits
-                    }
+        if (headerData[++pos]) {
+            // Nó folha
+            unsigned int charSize = 0;
+            std::string charDecoding;
 
-                    if (pos + charSize <= headerData.Size()) { // Ainda existem dados do cabeçalho para serem lidos
-                        std::string charDecoding;
-
-                        // Armazena a sequência de bits em uma string
-                        for (unsigned int j = 0; j < charSize; j++)
-                            headerData[++pos] ? charDecoding += "1" : charDecoding += "0";
-
-                        // Nó folha
-                        // Por default a frequência de cada caractere é 0 (não tem essa informação na reconstrução da trie)
-                        numNodes++;
-                        return new Node<std::string>(charDecoding, 0);
-                    }
+            // Possibilidades do primeiro byte
+            // 0xxxxxxx -> 8  bits
+            // 110xxxxx -> 16 bits
+            // 1110xxxx -> 24 bits
+            // 11110xxx -> 32 bits
+            if (headerData[++pos] == 0) {// 0x
+                charSize = 8 - 1; // subtrair a quantidade de bits já lidos
+                charDecoding = "0";
+            }
+            else { // 11x...
+                pos++; // Com certeza o próximo bit é 1
+                if (headerData[++pos] == 0) { // 110x...
+                    charSize = 16 - 3;
+                    charDecoding = "110";
+                }
+                else if (headerData[++pos] == 0) { // 1110x..
+                    charSize = 24 - 4;
+                    charDecoding = "1110";
+                }
+                else { // 11110x...
+                    pos++;
+                    charSize = 32 - 5;
+                    charDecoding = "11110";
                 }
             }
-            else {
-                // Nó interno
-                numNodes++;
-                Node<std::string> *leftChild = this->RebuildTrie(file, headerData, pos, numNodes);
-                Node<std::string> *rightChild = this->RebuildTrie(file, headerData, pos, numNodes);
 
-                return new Node<std::string>("", 0, leftChild, rightChild);
+            if (pos + charSize <= headerData.Size()) { // Ainda existem dados do cabeçalho para serem lidos
+
+                // Armazena a sequência de bits em uma string
+                for (unsigned int j = 0; j < charSize; j++)
+                    headerData[++pos] ? charDecoding += "1" : charDecoding += "0";
+
+                // Nó folha
+                // Por default a frequência de cada caractere é 0 (não tem essa informação na reconstrução da trie)
+                numNodes++;
+                return new Node<std::string>(charDecoding, 0);
             }
+        }
+        else {
+            // Nó interno
+            numNodes++;
+            Node<std::string> *leftChild = this->RebuildTrie(file, headerData, pos, numNodes);
+            Node<std::string> *rightChild = this->RebuildTrie(file, headerData, pos, numNodes);
+
+            return new Node<std::string>("", 0, leftChild, rightChild);
         }
 
         return nullptr;
