@@ -21,8 +21,10 @@ AMOUNT_OF_INPUTS = 50
 
 GAP_BETWEEN_FILE_INPUT_SIZE = FILE_INPUT_MAX_SIZE / AMOUNT_OF_INPUTS
 
-BENCHMARK_DIR = os.path.expanduser("~/Projects/HUFF_COMPRESS/src/tests/scripts/")
-EXE_FILE = os.path.expanduser("~/Projects/HUFF_COMPRESS/bin/program")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+HUFF_COMPRESS_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "../../../"))
+BENCHMARK_DIR = os.path.join(HUFF_COMPRESS_DIR, "src/tests/scripts/")
+EXE_FILE = os.path.join(HUFF_COMPRESS_DIR, "bin/program")
 
 INPUT_DIR = BENCHMARK_DIR + "inputs/"
 PNG_DIR = BENCHMARK_DIR + "graphics/"

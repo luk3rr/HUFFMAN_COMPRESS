@@ -13,7 +13,9 @@ MEGABYTE = 1024 ** 2
 BUFFER_MAX_SIZE = MEGABYTE
 WORD_MAX_LENGTH = 20
 
-BENCHMARK_DIR = os.path.expanduser("~/Projects/HUFF_COMPRESS/src/tests/scripts/")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+HUFF_COMPRESS_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "../../../"))
+BENCHMARK_DIR = os.path.join(HUFF_COMPRESS_DIR, "src/tests/scripts/")
 INPUT_DIR = BENCHMARK_DIR + "inputs/"
 
 def WriteBuffer(file, buffer):
