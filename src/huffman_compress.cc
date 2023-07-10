@@ -21,84 +21,55 @@ namespace huff {
         unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
 
         while (string.read((char*) bufferRead, BUFFER_MAX_SIZE) or string.gcount() > 0) {
-
             for (unsigned int i = 0; i < string.gcount(); i++) {
 
                 byte = bufferRead[i];
                 bits = std::bitset<8>(byte);
+                byteSet.clear();
 
-                if ((byte & 0x80) == 0) { // 0xxxxxxx -> Deve ler 1 byte
-                    byteSet.clear();
+                if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK) { // 0xxxxxxx -> Deve ler 1 byte
+                    byteSet = bits.to_string();
+                }
+                else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK) { // 110xxxxx -> Deve ler 2 bytes
                     byteSet = bits.to_string();
 
-                    // Operadtor de incremento da seg fault em alguns casos quando a chave ainda não existe
-                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
+                    i++;
+                    if (i >= string.gcount()) string >> std::noskipws >> byte;
+                    else byte = bufferRead[i];
+
+                    bits = std::bitset<8>(byte);
+                    byteSet += bits.to_string();
                 }
-                else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
+                else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK) { // 1110xxxx -> Deve ler 3 bytes
+                    byteSet = bits.to_string();
 
-                    i++;
-                    // Todos os bytes do buffer já foram lidos
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
+                    for (int j = 0; j < 2; j++) {
+                        i++;
+                        if (i >= string.gcount()) string >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+                    }
                 }
-                else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
+                else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK) { // 11110xxx -> Deve ler 4 bytes
+                    byteSet = bits.to_string();
 
-                    i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
+                    for (int j = 0; j < 3; j++) {
+                        i++;
+                        if (i >= string.gcount()) string >> std::noskipws >> byte;
+                        else byte = bufferRead[i];
 
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
+                        bits = std::bitset<8>(byte);
+                        byteSet += bits.to_string();
+                    }
                 }
-                else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
-                    byteSet.clear();
-                    byteSet += bits.to_string();
 
-                    i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
-                    i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
-
-                    bits = std::bitset<8>(byte);
-                    byteSet += bits.to_string();
-
+                if (not byteSet.empty()) {
                     map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
             }
         }
-
         delete[] bufferRead;
     }
 
@@ -150,7 +121,6 @@ namespace huff {
                     if (buffer[i * 8 + j] == '1')
                         byte |= (1 << (7 - j));
                 }
-
                 data[i] = byte;
             }
 
@@ -197,9 +167,9 @@ namespace huff {
         // Escreve o tamanho do cabeçalho no arquivo
         // O primeiro byte reservado será escrito posteriormente
         file.seekp(static_cast<std::streamoff>(signatureEndPos) + 1);
-        file.put((headerSize >> 16) & 0xFF);
-        file.put((headerSize >> 8) & 0xFF);
-        file.put(headerSize & 0xFF);
+        file.put((headerSize >> 16) & BYTE_MASK);
+        file.put((headerSize >> 8) & BYTE_MASK);
+        file.put(headerSize & BYTE_MASK);
 
         return headerEndPos;
     }
@@ -286,27 +256,13 @@ namespace huff {
                 for (unsigned int i = 0; i < file.gcount(); i++) {
                     byte = bufferRead[i];
                     bits = std::bitset<8>(byte);
+                    byteSet.clear();
 
-                    if ((byte & 0x80) == 0) // 0xxxxxxx -> Deve ler 1 byte
-                        bufferWrite += this->m_map[bits.to_string()];
-
-                    else if ((byte & 0xE0) == 0xC0) { // 110xxxxx -> Deve ler 2 bytes
-                        byteSet.clear();
-                        byteSet += bits.to_string();
-
-                        i++;
-                        // Todos os bytes do buffer já foram lidos
-                        if (i >= file.gcount()) file >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
-
-                        bits = std::bitset<8>(byte);
-                        byteSet += bits.to_string();
-
-                        bufferWrite += this->m_map[byteSet];
+                    if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK) { // 0xxxxxxx -> Deve ler 1 byte
+                        byteSet = bits.to_string();
                     }
-                    else if ((byte & 0xF0) == 0xE0) { // 1110xxxx -> Deve ler 3 bytes
-                        byteSet.clear();
-                        byteSet += bits.to_string();
+                    else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK) { // 110xxxxx -> Deve ler 2 bytes
+                        byteSet = bits.to_string();
 
                         i++;
                         if (i >= file.gcount()) file >> std::noskipws >> byte;
@@ -314,46 +270,33 @@ namespace huff {
 
                         bits = std::bitset<8>(byte);
                         byteSet += bits.to_string();
-
-                        i++;
-                        if (i >= file.gcount()) file >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
-
-                        bits = std::bitset<8>(byte);
-                        byteSet += bits.to_string();
-
-                        bufferWrite += this->m_map[byteSet];
                     }
-                    else if ((byte & 0xF8) == 0xF0) { // 11110xxx -> Deve ler 4 bytes
-                        byteSet.clear();
-                        byteSet += bits.to_string();
+                    else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK) { // 1110xxxx -> Deve ler 3 bytes
+                        byteSet = bits.to_string();
 
-                        i++;
-                        if (i >= file.gcount()) file >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
+                        for (int j = 0; j < 2; j++) {
+                            i++;
+                            if (i >= file.gcount()) file >> std::noskipws >> byte;
+                            else byte = bufferRead[i];
 
-                        bits = std::bitset<8>(byte);
-                        byteSet += bits.to_string();
-
-                        i++;
-                        if (i >= file.gcount()) // Todos os bytes do buffer já foram lidos
-                            file >> std::noskipws >> byte;
-
-                        else
-                            byte = bufferRead[i];
-
-                        bits = std::bitset<8>(byte);
-                        byteSet += bits.to_string();
-
-                        i++;
-                        if (i >= file.gcount()) file >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
-
-                        bits = std::bitset<8>(byte);
-                        byteSet += bits.to_string();
-
-                        bufferWrite += this->m_map[byteSet];
+                            bits = std::bitset<8>(byte);
+                            byteSet += bits.to_string();
+                        }
                     }
+                    else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK) { // 11110xxx -> Deve ler 4 bytes
+                        byteSet = bits.to_string();
+
+                        for (int j = 0; j < 3; j++) {
+                            i++;
+                            if (i >= file.gcount()) file >> std::noskipws >> byte;
+                            else byte = bufferRead[i];
+
+                            bits = std::bitset<8>(byte);
+                            byteSet += bits.to_string();
+                        }
+                    }
+
+                    bufferWrite += this->m_map[byteSet];
                 }
 
                 if (bufferWrite.size() >= BUFFER_MAX_SIZE)
@@ -395,9 +338,9 @@ namespace huff {
         if (not Parser::CheckSignature(file))
             throw huffexcpt::InvalidSignature(filename);
 
-        // Lê quantos bits do último byte são válidos
-        unsigned char validBitsOnLastByte;
-        file.read((char*) &validBitsOnLastByte, sizeof(validBitsOnLastByte));
+        // Lê quantos bits do último byte são inválidos
+        unsigned char junkBitsOnLastByte;
+        file.read((char*) &junkBitsOnLastByte, sizeof(junkBitsOnLastByte));
 
         // Lê o tamano do cabeçalho
         unsigned char headerSizeBytes[3];
@@ -435,8 +378,8 @@ namespace huff {
         this->m_trie.DeleteTree();
         this->m_trie.InsertExistingTree(root, numNodes);
 
-        // Retorna quantos bits do último byte são válidos
-        return validBitsOnLastByte;
+        // Retorna quantos bits do último byte são inválidos
+        return junkBitsOnLastByte;
     }
 
     void Compress::Decode(std::string binFile) {

@@ -26,8 +26,15 @@
 #include "vector.h"
 #include "parser.h"
 
+#define ONE_BYTE_UTF8_MASK   0x00    // 00000000
+#define TWO_BYTE_UTF8_MASK   0xC0    // 11000000
+#define THREE_BYTE_UTF8_MASK 0xE0    // 11100000
+#define FOUR_BYTE_UTF8_MASK  0xF0    // 11110000
+#define BYTE_MASK            0xFF    // 11111111
+
+
 const std::string SIGNATURE = "HUFF"; // Assinatura do arquivo comprimido
-const std::size_t BUFFER_MAX_SIZE = 1024 * 16; // 16 KB
+const std::size_t BUFFER_MAX_SIZE = 1024 * 16; // 16 kB
 
 namespace huff {
     class Compress {
@@ -76,7 +83,7 @@ namespace huff {
             /**
              * @brief Lê o cabeçalho do arquivo binário
              * @param file Arquivo binário que será lido
-             * @return Quantos bits do último byte do arquivo são válidos
+             * @return Quantos bits do último byte do arquivo são inválidos
              **/
             unsigned int ReadHeader(std::ifstream &file, std::string filename);
 
