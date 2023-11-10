@@ -1,140 +1,186 @@
 /*
-* Filename: huffman_compress.cc
-* Created on: June 27, 2023
-* Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
-*/
+ * Filename: huffman_compress.cc
+ * Created on: June 27, 2023
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ */
 
 #include "huffman_compress.h"
+#include "pair.h"
+#include "priority_queue_bheap.h"
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
-namespace huff {
+namespace huff
+{
     Compress::Compress() { }
 
     Compress::~Compress() { }
 
-    // TODO: Adicionar execeção para quanto a leitura do byte no arquivo não puder ser feita
-    // ex.: 1110xx... No fim do arquivo -> Tentativa de ler mais bytes
-    void Compress::Frequencies(std::ifstream &string, map::Map<std::string, unsigned int> &map) {
-        unsigned char byte;
-        std::string byteSet;
-        std::bitset<8> bits;
+    // TODO: Adicionar execeção para quando a leitura do byte no arquivo não puder ser
+    // feita ex.: 1110xx... No fim do arquivo -> Tentativa de ler mais bytes
+    void Compress::Frequencies(std::ifstream&                         string,
+                               rbtree::Map<std::string, std::size_t>& map)
+    {
+        unsigned char          byte;
+        std::string            byteSet;
+        std::bitset<BYTE_SIZE> bits;
 
+        // Buffer de leitura para otimizar o processo de leitura dos bits e contagem
+        // dos caracteres
         unsigned char* bufferRead = new unsigned char[BUFFER_MAX_SIZE];
 
-        while (string.read((char*) bufferRead, BUFFER_MAX_SIZE) or string.gcount() > 0) {
-            for (unsigned int i = 0; i < string.gcount(); i++) {
+        while (string.read((char*)bufferRead, BUFFER_MAX_SIZE) or string.gcount() > 0)
+        {
+            for (std::size_t i = 0; i < string.gcount(); i++)
+            {
 
                 byte = bufferRead[i];
-                bits = std::bitset<8>(byte);
+                bits = std::bitset<BYTE_SIZE>(byte);
                 byteSet.clear();
 
-                if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK) { // 0xxxxxxx -> Deve ler 1 byte
+                if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK)
+                { // 0xxxxxxx -> Deve ler 1 byte
                     byteSet = bits.to_string();
                 }
-                else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK) { // 110xxxxx -> Deve ler 2 bytes
+                else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK)
+                { // 110xxxxx -> Deve ler 2 bytes
                     byteSet = bits.to_string();
 
                     i++;
-                    if (i >= string.gcount()) string >> std::noskipws >> byte;
-                    else byte = bufferRead[i];
+                    if (i >= string.gcount())
+                        string >> std::noskipws >> byte;
+                    else
+                        byte = bufferRead[i];
 
-                    bits = std::bitset<8>(byte);
+                    bits = std::bitset<BYTE_SIZE>(byte);
                     byteSet += bits.to_string();
                 }
-                else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK) { // 1110xxxx -> Deve ler 3 bytes
+                else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK)
+                { // 1110xxxx -> Deve ler 3 bytes
                     byteSet = bits.to_string();
 
-                    for (int j = 0; j < 2; j++) {
+                    for (int j = 0; j < 2; j++)
+                    {
                         i++;
-                        if (i >= string.gcount()) string >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
+                        if (i >= string.gcount())
+                            string >> std::noskipws >> byte;
+                        else
+                            byte = bufferRead[i];
 
-                        bits = std::bitset<8>(byte);
+                        bits = std::bitset<BYTE_SIZE>(byte);
                         byteSet += bits.to_string();
                     }
                 }
-                else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK) { // 11110xxx -> Deve ler 4 bytes
+                else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK)
+                { // 11110xxx -> Deve ler 4 bytes
                     byteSet = bits.to_string();
 
-                    for (int j = 0; j < 3; j++) {
+                    for (int j = 0; j < 3; j++)
+                    {
                         i++;
-                        if (i >= string.gcount()) string >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
+                        if (i >= string.gcount())
+                            string >> std::noskipws >> byte;
+                        else
+                            byte = bufferRead[i];
 
-                        bits = std::bitset<8>(byte);
+                        bits = std::bitset<BYTE_SIZE>(byte);
                         byteSet += bits.to_string();
                     }
                 }
 
-                if (not byteSet.empty()) {
+                if (not byteSet.empty())
+                {
+                    // Incrementa o contador de frequência
                     map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
                 }
             }
         }
+
         delete[] bufferRead;
     }
 
-    void Compress::BuildTrie(map::Map<std::string, unsigned int> &map) {
-        MinPQueue<std::string> pqueue;
+    void Compress::BuildTrie(rbtree::Map<std::string, std::size_t>& map)
+    {
+        bheap::PriorityQueue<dlkd::Node<TrieInfo>*> pqueue;
 
-        for (auto &pair : map) {
-            pqueue.Insert(new Node<std::string>(pair.GetKey(), pair.GetValue()));
+        for (auto& pair : map)
+        {
+            pqueue.Enqueue(
+                new dlkd::Node<TrieInfo>(TrieInfo(pair.GetFirst(), pair.GetSecond())));
         }
 
-        Node<std::string> *x;
-        Node<std::string> *y;
+        dlkd::Node<TrieInfo>* x;
+        dlkd::Node<TrieInfo>* y;
 
-        while (pqueue.Size() > 1) {
-            x = pqueue.Delete();
-            y = pqueue.Delete();
-            pqueue.Insert(new Node<std::string>("", x->m_freq + y->m_freq, x, y));
+        std::size_t freqSum = 0;
+
+        while (pqueue.Size() > 1)
+        {
+            x = pqueue.Dequeue();
+            y = pqueue.Dequeue();
+
+            freqSum = x->GetValue().GetFrequencie() + y->GetValue().GetFrequencie();
+
+            pqueue.Enqueue(new dlkd::Node<TrieInfo>(TrieInfo("", freqSum), x, y));
         }
 
-        this->m_trie.InsertExistingTree(pqueue.Delete(), map.Size());
+        this->m_trie.InsertExistingTree(pqueue.Dequeue(), map.Size());
     }
 
-    void Compress::BuildCode() {
+    void Compress::BuildCode()
+    {
         this->BuildCode(this->m_trie.GetRoot(), "");
     }
 
-    void Compress::BuildCode(Node<std::string> *node, std::string code) {
-        if (node->IsLeaf()) {
-            this->m_map.Insert(node->m_key, code);
+    void Compress::BuildCode(dlkd::Node<TrieInfo>* node, std::string code)
+    {
+
+        // Check if node is an leaf
+        if (not(node->GetLeftNode() or node->GetRightNode()))
+        {
+            this->m_map.Insert(node->GetValue().GetBits(), code);
             return;
         }
 
-        this->BuildCode(node->m_left, code + "0");
-        this->BuildCode(node->m_right, code + "1");
+        this->BuildCode(node->GetLeftNode(), code + "0");
+        this->BuildCode(node->GetRightNode(), code + "1");
     }
 
-    void Compress::WriteBuffer(std::ofstream& file, std::string& buffer) {
-        if (!buffer.empty() and file.is_open()) {
+    void Compress::WriteBuffer(std::ofstream& file, std::string& buffer)
+    {
+        if (not buffer.empty() and file.is_open())
+        {
             std::size_t bufferSize = buffer.size();
-            std::size_t numBytes = bufferSize / 8;
+            std::size_t numBytes   = bufferSize / BYTE_SIZE;
 
             unsigned char* data = new unsigned char[numBytes];
 
             // Passa os bits na string para um array
-            for (std::size_t i = 0; i < numBytes; ++i) {
+            for (std::size_t i = 0; i < numBytes; ++i)
+            {
                 unsigned char byte = 0;
 
-                for (std::size_t j = 0; j < 8; ++j) {
-                    if (buffer[i * 8 + j] == '1')
-                        byte |= (1 << (7 - j));
+                for (std::size_t j = 0; j < BYTE_SIZE; ++j)
+                {
+                    if (buffer[i * BYTE_SIZE + j] == '1')
+                        byte |= (1 << (BYTE_SIZE - 1 - j));
                 }
                 data[i] = byte;
             }
 
             // Escreve os dados do buffer no arquivo
-            file.write((char*) data, numBytes);
+            file.write((char*)data, numBytes);
 
             // Remove os dados que foram gravados do buffer
-            buffer = buffer.substr(numBytes * 8);
+            buffer = buffer.substr(numBytes * BYTE_SIZE);
 
             delete[] data;
         }
     }
 
-    std::streampos Compress::WriteHeader(std::ofstream &file) {
+    std::streampos Compress::WriteHeader(std::ofstream& file)
+    {
         // Volta a posição de escrita para o inicio do arquivo
         file.seekp(0, std::ios::beg);
 
@@ -142,19 +188,20 @@ namespace huff {
         file.write(SIGNATURE.data(), SIGNATURE.size());
         std::streampos signatureEndPos = file.tellp();
 
-        // Reserva o 4 bytes do arquivo
-        // 1 byte para representar quantos bits do último byte são válidos
-        // 3 bytes para representar o tamanho do cabeçalho
-        unsigned char reservedBytes[4] = {0, 0, 0, 0};
-        file.write((char*) reservedBytes, sizeof(reservedBytes));
+        // Reserva os bytes iniciais do arquivo do arquivo
+        unsigned char reservedBytes[HEADER_RESERVED_BYTES_AT_START] = { };
+
+        file.write((char*)reservedBytes, sizeof(reservedBytes));
 
         std::streampos headerStartPos = file.tellp();
 
         std::string headerBuffer;
         this->WriteTrie(file, this->m_trie.GetRoot(), headerBuffer);
 
-        if (headerBuffer.size() % 8 != 0) { // Sobrou bits para serem gravados, completa com 1 é grava
-            while (headerBuffer.size() % 8 != 0) {
+        if (headerBuffer.size() % BYTE_SIZE != 0)
+        { // Sobrou bits para serem gravados, completa com 1 é grava
+            while (headerBuffer.size() % BYTE_SIZE != 0)
+            {
                 headerBuffer += "0";
             }
             this->WriteBuffer(file, headerBuffer);
@@ -162,35 +209,41 @@ namespace huff {
 
         // Calcula o tamanho do cabeçalho
         std::streampos headerEndPos = file.tellp();
-        std::streamoff headerSize = headerEndPos - headerStartPos;
+        std::streamoff headerSize   = headerEndPos - headerStartPos;
 
         // Escreve o tamanho do cabeçalho no arquivo
         // O primeiro byte reservado será escrito posteriormente
         file.seekp(static_cast<std::streamoff>(signatureEndPos) + 1);
-        file.put((headerSize >> 16) & BYTE_MASK);
-        file.put((headerSize >> 8) & BYTE_MASK);
+        file.put((headerSize >> BYTE_SIZE * 2) & BYTE_MASK);
+        file.put((headerSize >> BYTE_SIZE) & BYTE_MASK);
         file.put(headerSize & BYTE_MASK);
 
         return headerEndPos;
     }
 
-    void Compress::WriteTrie(std::ofstream &file, Node<std::string> *node, std::string &buffer) {
-        if (node->IsLeaf()) {
+    void Compress::WriteTrie(std::ofstream&        file,
+                             dlkd::Node<TrieInfo>* node,
+                             std::string&          buffer)
+    {
+        // Check if node is an leaf
+        if (not(node->GetLeftNode() or node->GetRightNode()))
+        {
             // bit 1 -> Nó folha
             buffer += "1";
-            buffer += node->m_key;
+            buffer += node->GetValue().GetBits();
             this->WriteBuffer(file, buffer);
         }
-        else {
+        else
+        {
             // bit 0 -> Nó interno
             buffer += "0";
-
-            WriteTrie(file, node->m_left, buffer);
-            WriteTrie(file, node->m_right, buffer);
+            WriteTrie(file, node->GetLeftNode(), buffer);
+            WriteTrie(file, node->GetRightNode(), buffer);
         }
     }
 
-    void Compress::Encode(std::string filename) {
+    void Compress::Encode(std::string filename)
+    {
         Parser::CheckEncodeCompatibility(filename);
 
         std::ifstream file(filename, std::ios::binary);
@@ -198,7 +251,7 @@ namespace huff {
         if (not file.is_open())
             throw huffexcpt::CouldNotOpenFile(filename);
 
-        map::Map<std::string, unsigned int> map;
+        rbtree::Map<std::string, std::size_t> map;
 
         // Inicio de medição do tempo total da compressão
         auto encodeTime = std::chrono::high_resolution_clock::now();
@@ -209,7 +262,10 @@ namespace huff {
         this->Frequencies(file, map);
 
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Cálculo das Frequências: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+        std::cout << "Cálculo das Frequências: " << std::fixed
+                  << std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                               start)
+                  << std::endl;
 
         // Medição do tempo de execução da construção da árvore
         start = std::chrono::high_resolution_clock::now();
@@ -217,7 +273,10 @@ namespace huff {
         this->BuildTrie(map);
 
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "Construção da trie: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+        std::cout << "Construção da trie: " << std::fixed
+                  << std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                               start)
+                  << std::endl;
 
         // Medição do tempo de execução da construção dos códigos
         start = std::chrono::high_resolution_clock::now();
@@ -225,18 +284,23 @@ namespace huff {
         this->BuildCode();
 
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "Construção dos códigos: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
+        std::cout << "Construção dos códigos: " << std::fixed
+                  << std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                               start)
+                  << std::endl;
 
         file.clear();
         file.seekg(0, std::ios::beg);
 
-        unsigned char byte;
-        std::string byteSet;
-        std::bitset<8> bits;
-        std::string bufferWrite;
+        unsigned char          byte;
+        std::string            byteSet;
+        std::bitset<BYTE_SIZE> bits;
+        std::string            bufferWrite;
 
         std::filesystem::path filePath(filename);
-        std::string outputFile = filePath.parent_path() / (filePath.stem().string() + filePath.extension().string() + ".bin");
+        std::string           outputFile =
+            filePath.parent_path() /
+            (filePath.stem().string() + filePath.extension().string() + ".bin");
         std::ofstream output(outputFile, std::ios::binary);
 
         if (not output.is_open())
@@ -246,52 +310,67 @@ namespace huff {
 
         // Medição do tempo de compressão do arquivo
         start = std::chrono::high_resolution_clock::now();
-        if (output.is_open()) {
+        if (output.is_open())
+        {
             // Escreve o cabeçalho do arquivo
             output.seekp(this->WriteHeader(output));
 
             // Inicia a escrita dos dados codificiados
-            while (file.read((char*) bufferRead, BUFFER_MAX_SIZE) or file.gcount() > 0) {
+            while (file.read((char*)bufferRead, BUFFER_MAX_SIZE) or file.gcount() > 0)
+            {
 
-                for (unsigned int i = 0; i < file.gcount(); i++) {
+                for (std::size_t i = 0; i < file.gcount(); i++)
+                {
                     byte = bufferRead[i];
-                    bits = std::bitset<8>(byte);
+                    bits = std::bitset<BYTE_SIZE>(byte);
                     byteSet.clear();
 
-                    if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK) { // 0xxxxxxx -> Deve ler 1 byte
+                    if ((byte & ONE_BYTE_UTF8_MASK) == ONE_BYTE_UTF8_MASK)
+                    { // 0xxxxxxx -> Deve ler 1 byte
                         byteSet = bits.to_string();
                     }
-                    else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK) { // 110xxxxx -> Deve ler 2 bytes
+                    else if ((byte & TWO_BYTE_UTF8_MASK) == TWO_BYTE_UTF8_MASK)
+                    { // 110xxxxx -> Deve ler 2 bytes
                         byteSet = bits.to_string();
 
                         i++;
-                        if (i >= file.gcount()) file >> std::noskipws >> byte;
-                        else byte = bufferRead[i];
+                        if (i >= file.gcount())
+                            file >> std::noskipws >> byte;
+                        else
+                            byte = bufferRead[i];
 
-                        bits = std::bitset<8>(byte);
+                        bits = std::bitset<BYTE_SIZE>(byte);
                         byteSet += bits.to_string();
                     }
-                    else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK) { // 1110xxxx -> Deve ler 3 bytes
+                    else if ((byte & THREE_BYTE_UTF8_MASK) == THREE_BYTE_UTF8_MASK)
+                    { // 1110xxxx -> Deve ler 3 bytes
                         byteSet = bits.to_string();
 
-                        for (int j = 0; j < 2; j++) {
+                        for (int j = 0; j < 2; j++)
+                        {
                             i++;
-                            if (i >= file.gcount()) file >> std::noskipws >> byte;
-                            else byte = bufferRead[i];
+                            if (i >= file.gcount())
+                                file >> std::noskipws >> byte;
+                            else
+                                byte = bufferRead[i];
 
-                            bits = std::bitset<8>(byte);
+                            bits = std::bitset<BYTE_SIZE>(byte);
                             byteSet += bits.to_string();
                         }
                     }
-                    else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK) { // 11110xxx -> Deve ler 4 bytes
+                    else if ((byte & FOUR_BYTE_UTF8_MASK) == FOUR_BYTE_UTF8_MASK)
+                    { // 11110xxx -> Deve ler 4 bytes
                         byteSet = bits.to_string();
 
-                        for (int j = 0; j < 3; j++) {
+                        for (int j = 0; j < 3; j++)
+                        {
                             i++;
-                            if (i >= file.gcount()) file >> std::noskipws >> byte;
-                            else byte = bufferRead[i];
+                            if (i >= file.gcount())
+                                file >> std::noskipws >> byte;
+                            else
+                                byte = bufferRead[i];
 
-                            bits = std::bitset<8>(byte);
+                            bits = std::bitset<BYTE_SIZE>(byte);
                             byteSet += bits.to_string();
                         }
                     }
@@ -303,11 +382,14 @@ namespace huff {
                     this->WriteBuffer(output, bufferWrite);
             }
 
-            if (not bufferWrite.empty()) {
+            if (not bufferWrite.empty())
+            {
                 // Completa o último byte e o grava no arquivo
-                unsigned int junkBitsOnLastbyte = 0;
-                if (bufferWrite.size() % 8 != 0) {
-                    while (bufferWrite.size() % 8 != 0) {
+                std::size_t junkBitsOnLastbyte = 0;
+                if (bufferWrite.size() % BYTE_SIZE != 0)
+                {
+                    while (bufferWrite.size() % BYTE_SIZE != 0)
+                    {
                         bufferWrite += "1";
                         junkBitsOnLastbyte++;
                     }
@@ -317,7 +399,7 @@ namespace huff {
                 // Grava quantos bits são inválidos no último byte
                 output.seekp(SIGNATURE.size(), std::ios::beg);
                 unsigned char byte = junkBitsOnLastbyte;
-                output.write((char*) &byte, sizeof(byte));
+                output.write((char*)&byte, sizeof(byte));
             }
 
             output.close();
@@ -326,12 +408,19 @@ namespace huff {
             delete[] bufferRead;
 
             end = std::chrono::high_resolution_clock::now();
-            std::cout << "Compressão do arquivo: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - start) << std::endl;
-            std::cout << "Tempo total: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - encodeTime) << std::endl;
+            std::cout << "Compressão do arquivo: " << std::fixed
+                      << std::chrono::duration_cast<std::chrono::duration<double>>(
+                             end - start)
+                      << std::endl;
+            std::cout << "Tempo total: " << std::fixed
+                      << std::chrono::duration_cast<std::chrono::duration<double>>(
+                             end - encodeTime)
+                      << std::endl;
         }
     }
 
-    unsigned int Compress::ReadHeader(std::ifstream &file, std::string filename) {
+    std::size_t Compress::ReadHeader(std::ifstream& file, std::string filename)
+    {
         // Volta a posição de leitura para o inicio do arquivo
         file.seekg(0, std::ios::beg);
 
@@ -340,39 +429,50 @@ namespace huff {
 
         // Lê quantos bits do último byte são inválidos
         unsigned char junkBitsOnLastByte;
-        file.read((char*) &junkBitsOnLastByte, sizeof(junkBitsOnLastByte));
+        file.read((char*)&junkBitsOnLastByte, sizeof(junkBitsOnLastByte));
 
         // Lê o tamano do cabeçalho
-        unsigned char headerSizeBytes[3];
-        file.read((char*) headerSizeBytes, 3);
+        unsigned char headerSizeBytes[HEADER_SIZE_IN_BYTES];
+        file.read((char*)headerSizeBytes, HEADER_SIZE_IN_BYTES);
 
-        unsigned int headerSize = 0;
-        headerSize |= headerSizeBytes[0];
-        headerSize <<= 8;
-        headerSize |= headerSizeBytes[1];
-        headerSize <<= 8;
-        headerSize |= headerSizeBytes[2];
+
+        std::size_t headerSize = 0;
+        // HEADER_SIZE_BYTEs - 1, pois o último byte não deve sofrer shift
+        for (std::size_t i = 0; i < HEADER_SIZE_IN_BYTES - 1; i++)
+        {
+            headerSize |= headerSizeBytes[i];
+            headerSize <<= BYTE_SIZE;
+        }
+
+        headerSize |= headerSizeBytes[HEADER_SIZE_IN_BYTES - 1];
 
         // Grava os dados do cabeçalho em um vector
-        Vector<bool> headerData(headerSize * 8); // Vector com tamanho do cabaçalho em bits
+        // Vector com tamanho do cabaçalho em bits
+        Vector<bool> headerData(headerSize * BYTE_SIZE);
 
-        for (unsigned int i = 0; i < headerSize; ++i) {
+        std::cout << "HEADER SYZE IN BYTES: " << headerSize * BYTE_SIZE << std::endl;
+
+        for (std::size_t i = 0; i < headerSize; ++i)
+        {
             unsigned char byte;
-            file.read((char*) &byte, sizeof(byte));
+            file.read((char*)&byte, sizeof(byte));
 
             // Armazena cada bit em uma posição do vector
-            for (int j = 7; j >= 0; j--) {
+            for (std::size_t j = BYTE_SIZE - 1; j >= 0; j--)
+            {
                 bool bit = (byte >> j) & 1;
                 headerData.PushBack(bit);
             }
         }
 
+        std::cout << "Arvore reconstruída" << std::endl;
+
         // Reconstroí a Huffman trie
-        unsigned int numNodes = 0; // Número de nós na árvore
-        unsigned int pos = 0; // Posição no vector
-        Node<std::string> *root = new Node<std::string>("root", 0);
-        root->m_left = this->RebuildTrie(file, headerData, pos, numNodes);
-        root->m_right = this->RebuildTrie(file, headerData, pos, numNodes);
+        std::size_t           numNodes = 0; // Número de nós na árvore
+        std::size_t           pos      = 0; // Posição no vector
+        dlkd::Node<TrieInfo>* root     = new dlkd::Node<TrieInfo>(TrieInfo("root", 0));
+        root->SetLeftNode(this->RebuildTrie(file, headerData, pos, numNodes));
+        root->SetRightNode(this->RebuildTrie(file, headerData, pos, numNodes));
 
         // Armazena a árvore reconstruída
         this->m_trie.DeleteTree();
@@ -382,7 +482,8 @@ namespace huff {
         return junkBitsOnLastByte;
     }
 
-    void Compress::Decode(std::string binFile) {
+    void Compress::Decode(std::string binFile)
+    {
         Parser::CheckDecodeCompatibility(binFile);
 
         std::ifstream bin(binFile, std::ios::binary);
@@ -390,13 +491,17 @@ namespace huff {
         std::filesystem::path filePath(binFile);
 
         std::string extension = filePath.extension().string();
-        if (extension.length() >= 4 && extension.substr(extension.length() - 4) == ".bin")
+        if (extension.length() >= 4 &&
+            extension.substr(extension.length() - 4) == ".bin")
             filePath.replace_extension("");
 
-        std::string originalFileName = filePath.parent_path() / filePath.stem().string();
+        std::string originalFileName =
+            filePath.parent_path() / filePath.stem().string();
         std::string originalExtension = filePath.extension().string();
 
-        std::string outputFileName = filePath.parent_path() / (filePath.stem().string() + "-decompressed" + originalExtension);
+        std::string outputFileName =
+            filePath.parent_path() /
+            (filePath.stem().string() + "-decompressed" + originalExtension);
         std::ofstream decompress(outputFileName, std::ios::binary);
 
         // Obtém a posição atual
@@ -405,47 +510,58 @@ namespace huff {
         if (not decompress.is_open())
             throw huffexcpt::CouldNotOpenFile(outputFileName);
 
-        unsigned int junkBitsOnLastByte = this->ReadHeader(bin, binFile);
+        std::size_t junkBitsOnLastByte = this->ReadHeader(bin, binFile);
 
-        Node<std::string> *current = this->m_trie.GetRoot();
+        dlkd::Node<TrieInfo>* current = this->m_trie.GetRoot();
 
-        std::bitset<8> bits;
-        std::string bufferRead;
-        std::string bufferWrite;
-        unsigned char byte;
-        unsigned int bufferPosition = 0;
+        std::bitset<BYTE_SIZE> bits;
+        std::string            bufferRead;
+        std::string            bufferWrite;
+        unsigned char          byte;
+        std::size_t            bufferPosition = 0;
 
         unsigned char* buffer = new unsigned char[BUFFER_MAX_SIZE];
 
         std::streampos endReadPosition = static_cast<std::streamoff>(binSize) - 1;
 
         auto decodeTime = std::chrono::high_resolution_clock::now();
-        while (bin.read((char*) buffer, BUFFER_MAX_SIZE) or bin.gcount() > 0) {
+        while (bin.read((char*)buffer, BUFFER_MAX_SIZE) or bin.gcount() > 0)
+        {
 
             std::streampos currentReadPosition = bin.tellg();
 
-            for (unsigned int i = 0; i < bin.gcount(); i++) {
+            for (std::size_t i = 0; i < bin.gcount(); i++)
+            {
                 byte = buffer[i];
-                bits = std::bitset<8>(byte);
+                bits = std::bitset<BYTE_SIZE>(byte);
 
                 bufferRead += bits.to_string();
 
-                while (bufferPosition < bufferRead.size()) {
+                while (bufferPosition < bufferRead.size())
+                {
                     // Se estiver no último byte, itera somente sobre os bits válidos
-                    // Os bits inválidos (0's usados apenas para completar um byte e possibilitar a gravação do último byte)
-                    // causavam um percorrimento na árvore e consequente inserção de um caractere aleatório no fim do arquivo
-                    // descompactado
-                    // IF (o último byte está no buffer AND está iterando no último byte AND e o último bit válido já foi lido)
-                    if (currentReadPosition == endReadPosition and i == bin.gcount() - 1 and bufferPosition == bufferRead.size() - junkBitsOnLastByte)
+                    // Os bits inválidos (0's usados apenas para completar um byte e
+                    // possibilitar a gravação do último byte) causavam um percorrimento
+                    // na árvore e consequente inserção de um caractere aleatório no fim
+                    // do arquivo descompactado IF (o último byte está no buffer AND
+                    // está iterando no último byte AND e o último bit válido já foi
+                    // lido)
+                    if (currentReadPosition == endReadPosition and
+                        i == bin.gcount() - 1 and
+                        bufferPosition == bufferRead.size() - junkBitsOnLastByte)
                         break;
 
-                    bufferRead[bufferPosition++] == '1' ? current = current->m_right : current = current->m_left;
+                    bufferRead[bufferPosition++] == '1'
+                        ? current = current->GetRightNode()
+                        : current = current->GetLeftNode();
 
-                    if (current->IsLeaf()) {
-                        bufferWrite += current->GetKey();
+                    // Check if node is an leaf
+                    if (not(current->GetLeftNode() or current->GetRightNode()))
+                    {
+                        bufferWrite += current->GetValue().GetBits();
                         current = this->m_trie.GetRoot();
 
-                        bufferRead = bufferRead.substr(bufferPosition);
+                        bufferRead     = bufferRead.substr(bufferPosition);
                         bufferPosition = 0;
                     }
                 }
@@ -463,16 +579,24 @@ namespace huff {
         bin.close();
 
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "Descompressão do arquivo: " << std::fixed << std::chrono::duration_cast<std::chrono::duration<double>>(end - decodeTime) << std::endl;
+        std::cout << "Descompressão do arquivo: " << std::fixed
+                  << std::chrono::duration_cast<std::chrono::duration<double>>(
+                         end - decodeTime)
+                  << std::endl;
     }
 
-    Node<std::string> *Compress::RebuildTrie(std::ifstream &file, Vector<bool> &headerData, unsigned int &pos, unsigned int &numNodes) {
+    dlkd::Node<TrieInfo>* Compress::RebuildTrie(std::ifstream& file,
+                                                Vector<bool>&  headerData,
+                                                std::size_t&   pos,
+                                                std::size_t&   numNodes)
+    {
         if (pos + 7 >= headerData.Size())
             return nullptr;
 
-        if (headerData[++pos]) {
+        if (headerData[++pos])
+        {
             // Nó folha
-            unsigned int charSize = 0;
+            std::size_t charSize = 0;
             std::string charDecoding;
 
             // Possibilidades do primeiro byte
@@ -480,49 +604,59 @@ namespace huff {
             // 110xxxxx -> 16 bits
             // 1110xxxx -> 24 bits
             // 11110xxx -> 32 bits
-            if (headerData[++pos] == 0) {// 0x
-                charSize = 8 - 1; // subtrair a quantidade de bits já lidos
+            if (headerData[++pos] == 0)
+            {                                 // 0x
+                charSize     = BYTE_SIZE - 1; // subtrair a quantidade de bits já lidos
                 charDecoding = "0";
             }
-            else { // 11x...
+            else
+            {          // 11x...
                 pos++; // Com certeza o próximo bit é 1
-                if (headerData[++pos] == 0) { // 110x...
-                    charSize = 16 - 3;
+                if (headerData[++pos] == 0)
+                { // 110x...
+                    charSize     = BYTE_SIZE * 2 - 3;
                     charDecoding = "110";
                 }
-                else if (headerData[++pos] == 0) { // 1110x..
-                    charSize = 24 - 4;
+                else if (headerData[++pos] == 0)
+                { // 1110x..
+                    charSize     = BYTE_SIZE * 3 - 4;
                     charDecoding = "1110";
                 }
-                else { // 11110x...
+                else
+                { // 11110x...
                     pos++;
-                    charSize = 32 - 5;
+                    charSize     = BYTE_SIZE * 4 - 5;
                     charDecoding = "11110";
                 }
             }
 
-            if (pos + charSize <= headerData.Size()) { // Ainda existem dados do cabeçalho para serem lidos
+            if (pos + charSize <= headerData.Size())
+            { // Ainda existem dados do cabeçalho para serem lidos
 
                 // Armazena a sequência de bits em uma string
-                for (unsigned int j = 0; j < charSize; j++)
+                for (std::size_t j = 0; j < charSize; j++)
                     headerData[++pos] ? charDecoding += "1" : charDecoding += "0";
 
                 // Nó folha
-                // Por default a frequência de cada caractere é 0 (não tem essa informação na reconstrução da trie)
+                // Por default a frequência de cada caractere é 0 (não tem essa
+                // informação na reconstrução da trie)
                 numNodes++;
-                return new Node<std::string>(charDecoding, 0);
+                return new dlkd::Node<TrieInfo>(TrieInfo(charDecoding, 0));
             }
         }
-        else {
+        else
+        {
             // Nó interno
             numNodes++;
-            Node<std::string> *leftChild = this->RebuildTrie(file, headerData, pos, numNodes);
-            Node<std::string> *rightChild = this->RebuildTrie(file, headerData, pos, numNodes);
+            dlkd::Node<TrieInfo>* leftChild =
+                this->RebuildTrie(file, headerData, pos, numNodes);
+            dlkd::Node<TrieInfo>* rightChild =
+                this->RebuildTrie(file, headerData, pos, numNodes);
 
-            return new Node<std::string>("", 0, leftChild, rightChild);
+            return new dlkd::Node<TrieInfo>(TrieInfo("", 0), leftChild, rightChild);
         }
 
         return nullptr;
     }
 
-}
+} // namespace huff

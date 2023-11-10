@@ -1,34 +1,45 @@
 /*
-* Filename: parser.cc
-* Created on: July  4, 2023
-* Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
-*/
+ * Filename: parser.cc
+ * Created on: July  4, 2023
+ * Author: Lucas Araújo <araujolucas@dcc.ufmg.br>
+ */
 
 #include "parser.h"
 #include "huffman_compress.h" // Incluído aqui devido ao problema de dependência circular
 
-namespace huff {
-    bool Parser::IsUTF8(std::ifstream &file) {
+namespace huff
+{
+    bool Parser::IsUTF8(std::ifstream& file)
+    {
         unsigned char buffer[20];
-        file.read((char*) buffer, sizeof(buffer));
+        file.read((char*)buffer, sizeof(buffer));
 
         // Verifica se os bytes indicam um arquivo UTF-8 válido (sem BOM)
         int numBytes = 0;
-        for (int i = 0; i < file.gcount(); i++) {
-            if ((buffer[i] & 0x80) == 0) numBytes = 1; // Caractere ASCII de 1 byte
+        for (int i = 0; i < file.gcount(); i++)
+        {
+            if ((buffer[i] & 0x80) == 0)
+                numBytes = 1; // Caractere ASCII de 1 byte
 
-            else if ((buffer[i] & 0xE0) == 0xC0) numBytes = 2; // Inicia sequência de 2 bytes
+            else if ((buffer[i] & 0xE0) == 0xC0)
+                numBytes = 2; // Inicia sequência de 2 bytes
 
-            else if ((buffer[i] & 0xF0) == 0xE0) numBytes = 3; // Inicia sequência de 3 bytes
+            else if ((buffer[i] & 0xF0) == 0xE0)
+                numBytes = 3; // Inicia sequência de 3 bytes
 
-            else if ((buffer[i] & 0xF8) == 0xF0) numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
+            else if ((buffer[i] & 0xF8) == 0xF0)
+                numBytes = 4; // Inicia sequência de 4 bytes (máximo em UTF-8)
 
-            else return false; // Byte inválido
+            else
+                return false; // Byte inválido
 
-            for (int j = 1; j < numBytes; j++) {
-                if (i + j >= file.gcount()) return false; // Fim prematuro do arquivo
+            for (int j = 1; j < numBytes; j++)
+            {
+                if (i + j >= file.gcount())
+                    return false; // Fim prematuro do arquivo
 
-                if ((buffer[i + j] & 0xC0) != 0x80) return false; // Caractere mal formado
+                if ((buffer[i + j] & 0xC0) != 0x80)
+                    return false; // Caractere mal formado
             }
 
             i += numBytes - 1;
@@ -36,14 +47,16 @@ namespace huff {
         return true;
     }
 
-    bool Parser::CheckSignature(std::ifstream &file) {
+    bool Parser::CheckSignature(std::ifstream& file)
+    {
         char buffer[SIGNATURE.size()];
         file.read(buffer, sizeof(buffer));
 
         return std::string(buffer, SIGNATURE.size()) == SIGNATURE;
     }
 
-    bool Parser::CheckDecodeCompatibility(std::string filename) {
+    bool Parser::CheckDecodeCompatibility(std::string filename)
+    {
         std::ifstream file(filename, std::ios::binary);
 
         if (not file.is_open() or std::filesystem::is_directory(filename))
@@ -58,7 +71,8 @@ namespace huff {
         return true;
     }
 
-    bool Parser::CheckEncodeCompatibility(std::string filename) {
+    bool Parser::CheckEncodeCompatibility(std::string filename)
+    {
         std::ifstream file(filename, std::ios::binary);
 
         if (not file.is_open() or std::filesystem::is_directory(filename))
@@ -76,4 +90,4 @@ namespace huff {
         file.close();
         return true;
     }
-}
+} // namespace huff

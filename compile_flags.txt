@@ -3,4 +3,6 @@
 include
 -I
 include/lib
+-I
+submodules/data_structures/include
 --std=c++20
