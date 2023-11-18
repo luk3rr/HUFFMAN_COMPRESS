@@ -1,37 +1,55 @@
-# HUFFMAN_COMPRESS
-HUFFMAN_COMPRESS é um programa que possibilita a compressão e descompressão de arquivos codificados como UTF-8. Esse programa é o produto de uma atividade prática da disciplina de Estruturas de Dados do [Departamento de Ciência da Computação da UFMG](https://dcc.ufmg.br/).
+* HUFFMAN_COMPRESS
+HUFFMAN_COMPRESS é um programa que possibilita a compressão e descompressão de arquivos codificados como UTF-8. Esse programa é o produto de uma atividade prática da disciplina de Estruturas de Dados do [[https://dcc.ufmg.br/][Departamento de Ciência da Computação da UFMG]].
 
-## Sumário
-- [Compilação](#Compilação)
-- [Execução](#Execução)
-- [Documentação](#Documentação)
+** Sumário
+- [[#Compilação][Compilação]]
+- [[#Execução][Execução]]
+- [[#Benchmarks][Benchmarks]]
+- [[#Documentação][Documentação]]
 
-# Compilação
+* Compilação
 HUFFMAN_COMPRESS pode ser compilado com o seguinte comando:
 
-``` sh
-$ make build
-```
+#+begin_src sh
+$ ./run --build
+#+end_src
 
 OBS.: O programa foi desenvolvido e testado utilizando o g++12. Certifique-se de utilizar esta versão do compilador.
 
-# Execução
-A execução pode ser realizada tanto pelo Makefile: ``make run ARGS="<params>"``
+* Execução
+A execução pode ser realizada tanto pelo script python:
+#+begin_src sh
+$ ./run --exec --exec_args <params> <file>
+#+end_src
 
-quanto pela execução direta do executável: ``bin/program <params>``
+quanto pela execução direta do executável:
+#+begin_src
+$ bin/program <params> <file>
+#+end_src
 
 Os parâmetros disponíveis seguem abaixo:
 
 | Parâmetro                   | Descrição             |
 |-----------------------------|-----------------------|
-| `-c, --compress <file>`     | Compacta o arquivo    |
-| `-d, --decompress <binary>` | Descompacta o binário |
-| `-h, --help`                | Mensagem de ajuda     |
+| =-c, --compress <file>=     | Compacta o arquivo    |
+| =-d, --decompress <binary>= | Descompacta o binário |
+| =-h, --help=                | Mensagem de ajuda     |
 
-- A compressão de um arquivo gerará um arquivo no mesmo diretório do arquivo original, mas com a extensão ``.bin``.
+- A compressão de um arquivo gerará um arquivo no mesmo diretório do arquivo original, mas com a extensão =.bin=.
 - A descompactação produzirá um arquivo no mesmo diretório do arquivo binário, com o nome e extensão presentes no nome do binário.
 
 OBS.: A descompactação só pode ser realizada em arquivos compactados por este programa. Implementações diferentes do algoritmo de Huffman produzem binários diferentes.
 
-# Documentação
-A primeira versão da documentação bem como o enunciado deste trabalho pode ser lida [aqui](https://github.com/luk3rr/HUFFMAN_COMPRESS/tree/main/docs).
+* Benchmarks
+Em [[https://github.com/luk3rr/HUFFMAN_COMPRESS/tree/main/test/benchmark][test/benchmark]] existe o script =benchmark.py=, o qual realiza uma bateria de testes para diferentes tamanhos de arquivos, além de plotar alguns gráficos com os resultados. Esses resultados são demonstrados a seguir.
+
+** Taxa de compressão
+[[file:test/benchmark/graphics/compression_rates.png][320x240]]
+** Tempo de compressão
+#+ATTR_HTML: :width 200px
+[[file:test/benchmark/graphics/compression_times.png]]
+** Tempo para descompressão
+#+ATTR_HTML: :width 200px
+[[file:test/benchmark/graphics/decompression_times.png]]
+* Documentação
+A primeira versão da documentação bem como o enunciado deste trabalho pode ser lida [[https://github.com/luk3rr/HUFFMAN_COMPRESS/tree/main/docs][aqui]].
