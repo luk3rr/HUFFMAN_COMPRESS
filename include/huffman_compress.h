@@ -67,6 +67,14 @@ namespace huff
             {
                 return m_bits;
             }
+
+            // Função amiga para o overload do operador <<
+            friend std::ostream& operator<<(std::ostream& os, const TrieInfo& trieInfo)
+            {
+                os << "Bits: " << trieInfo.m_bits
+                   << ", Frequencie: " << trieInfo.m_frequencie;
+                return os;
+            }
     };
 
     class Compress
@@ -143,9 +151,9 @@ namespace huff
              * @param numNodes Número de nós atualmente na árvore
              **/
             dlkd::Node<TrieInfo>* RebuildTrie(std::ifstream& file,
-                                                 Vector<bool>&  headerData,
-                                                 std::size_t&   pos,
-                                                 std::size_t&   numNodes);
+                                              Vector<bool>&  headerData,
+                                              std::size_t&   pos,
+                                              std::size_t&   numNodes);
 
         public:
             Compress();

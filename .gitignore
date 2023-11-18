@@ -22,3 +22,8 @@ CTestTestfile.cmake
 _deps
 build/**/Makefile
 build/libs/*
+
+# Others
+*.dat
+*.txt
+*.bin

@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 
 MEGABYTE = 1024 * 1024
 
-FILE_INPUT_MAX_SIZE = 10 # em MB
-AMOUNT_OF_INPUTS = 4
+FILE_INPUT_MAX_SIZE = 100 # em MB
+AMOUNT_OF_INPUTS = 20
 
 GAP_BETWEEN_FILE_INPUT_SIZE = FILE_INPUT_MAX_SIZE / AMOUNT_OF_INPUTS
 
@@ -71,7 +71,7 @@ def GenInputFiles():
         Gera os arquivos necessários para os testes, caso eles não estejam disponíveis
     """
     print("Gerando os arquivos faltantes...")
-    for i in range(1, AMOUNT_OF_INPUTS):
+    for i in range(1, AMOUNT_OF_INPUTS + 1):
         filesize = i * GAP_BETWEEN_FILE_INPUT_SIZE
         filepath = os.path.join(INPUT_DIR, f"random-{filesize:.1f}MB.txt")
 

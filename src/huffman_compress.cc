@@ -189,7 +189,7 @@ namespace huff
         std::streampos signatureEndPos = file.tellp();
 
         // Reserva os bytes iniciais do arquivo do arquivo
-        unsigned char reservedBytes[HEADER_RESERVED_BYTES_AT_START] = { };
+        unsigned char reservedBytes[HEADER_RESERVED_BYTES_AT_START] = {};
 
         file.write((char*)reservedBytes, sizeof(reservedBytes));
 
@@ -199,7 +199,7 @@ namespace huff
         this->WriteTrie(file, this->m_trie.GetRoot(), headerBuffer);
 
         if (headerBuffer.size() % BYTE_SIZE != 0)
-        { // Sobrou bits para serem gravados, completa com 1 é grava
+        { // Sobrou bits para serem gravados, completa com 0 é grava
             while (headerBuffer.size() % BYTE_SIZE != 0)
             {
                 headerBuffer += "0";
@@ -435,7 +435,6 @@ namespace huff
         unsigned char headerSizeBytes[HEADER_SIZE_IN_BYTES];
         file.read((char*)headerSizeBytes, HEADER_SIZE_IN_BYTES);
 
-
         std::size_t headerSize = 0;
         // HEADER_SIZE_BYTEs - 1, pois o último byte não deve sofrer shift
         for (std::size_t i = 0; i < HEADER_SIZE_IN_BYTES - 1; i++)
@@ -448,9 +447,7 @@ namespace huff
 
         // Grava os dados do cabeçalho em um vector
         // Vector com tamanho do cabaçalho em bits
-        Vector<bool> headerData(headerSize * BYTE_SIZE);
-
-        std::cout << "HEADER SYZE IN BYTES: " << headerSize * BYTE_SIZE << std::endl;
+        Vector<bool> headerData(headerSize);
 
         for (std::size_t i = 0; i < headerSize; ++i)
         {
@@ -458,14 +455,12 @@ namespace huff
             file.read((char*)&byte, sizeof(byte));
 
             // Armazena cada bit em uma posição do vector
-            for (std::size_t j = BYTE_SIZE - 1; j >= 0; j--)
+            for (int j = BYTE_SIZE - 1; j >= 0; j--)
             {
                 bool bit = (byte >> j) & 1;
                 headerData.PushBack(bit);
             }
         }
-
-        std::cout << "Arvore reconstruída" << std::endl;
 
         // Reconstroí a Huffman trie
         std::size_t           numNodes = 0; // Número de nós na árvore
