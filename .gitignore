@@ -27,3 +27,4 @@ build/libs/*
 *.dat
 *.txt
 *.bin
+*-decompressed*
