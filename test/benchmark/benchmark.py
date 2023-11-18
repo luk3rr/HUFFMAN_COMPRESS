@@ -142,44 +142,45 @@ def RunTests():
     files = sorted(os.listdir(INPUT_DIR), key=lambda f: os.path.getsize(os.path.join(INPUT_DIR, f)))
 
     for i, file in enumerate(files):
-        filePath = os.path.join(INPUT_DIR, file)
-        fileSize = os.path.getsize(filePath) // MEGABYTE
+        if file != ".gitkeep":
+            filePath = os.path.join(INPUT_DIR, file)
+            fileSize = os.path.getsize(filePath) // MEGABYTE
 
-        t0 = time.time()
-        subprocess.run([EXE_FILE, "-c", filePath], stdout=subprocess.DEVNULL)
-        t1 = time.time()
+            t0 = time.time()
+            subprocess.run([EXE_FILE, "-c", filePath], stdout=subprocess.DEVNULL)
+            t1 = time.time()
 
-        execution_time = t1 - t0
-        with open(COMP_TIMES_FILE, "a") as f:
-            f.write(f"{fileSize} {execution_time}\n")
+            execution_time = t1 - t0
+            with open(COMP_TIMES_FILE, "a") as f:
+                f.write(f"{fileSize} {execution_time}\n")
 
-        binFile = filePath + ".bin"
-        binSize = os.path.getsize(binFile) // MEGABYTE
+            binFile = filePath + ".bin"
+            binSize = os.path.getsize(binFile) // MEGABYTE
 
-        compressionRate = (fileSize - binSize) / fileSize * 100
-        with open(COMP_RATE_FILE, "a") as f:
-            f.write(f"{fileSize} {compressionRate}\n")
+            compressionRate = (fileSize - binSize) / fileSize * 100
+            with open(COMP_RATE_FILE, "a") as f:
+                f.write(f"{fileSize} {compressionRate}\n")
 
-        t0 = time.time()
-        subprocess.run([EXE_FILE, "-d", binFile], stdout=subprocess.DEVNULL)
-        t1 = time.time()
+            t0 = time.time()
+            subprocess.run([EXE_FILE, "-d", binFile], stdout=subprocess.DEVNULL)
+            t1 = time.time()
 
-        execution_time = t1 - t0
-        with open(DECOMP_TIMES_FILE, "a") as f:
-            f.write(f"{fileSize} {execution_time}\n")
+            execution_time = t1 - t0
+            with open(DECOMP_TIMES_FILE, "a") as f:
+                f.write(f"{fileSize} {execution_time}\n")
 
-        progress = (i + 1) * 100 / len(files)
-        sys.stdout.write(f"Progresso: {progress:.2f}%")
-        sys.stdout.flush()
-        sys.stdout.write('\r')
+            progress = (i + 1) * 100 / len(files)
+            sys.stdout.write(f"Progresso: {progress:.2f}%")
+            sys.stdout.flush()
+            sys.stdout.write('\r')
 
-        decompressedFile = os.path.join(INPUT_DIR, filePath.replace(".txt", "-decompressed.txt"))
+            decompressedFile = os.path.join(INPUT_DIR, filePath.replace(".txt", "-decompressed.txt"))
 
-        passed = CheckIntegrity(filePath, decompressedFile)
+            passed = CheckIntegrity(filePath, decompressedFile)
 
-        if passed:
-            os.remove(binFile)
-            os.remove(decompressedFile)
+            if passed:
+                os.remove(binFile)
+                os.remove(decompressedFile)
 
 def PlotAnalysis():
     data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])

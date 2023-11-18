@@ -92,7 +92,7 @@ namespace huff
                 if (not byteSet.empty())
                 {
                     // Incrementa o contador de frequência
-                    map.Contains(byteSet) ? map[byteSet]++ : map[byteSet];
+                    map[byteSet]++;
                 }
             }
         }
