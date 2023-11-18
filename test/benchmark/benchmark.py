@@ -184,24 +184,27 @@ def RunTests():
 
 def PlotAnalysis():
     data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])
+    plt.figure(figsize=(4,3), dpi=80)
     plt.plot(*data, marker="o")
     plt.xlabel("Tamanho do arquivo (MB)")
     plt.ylabel("Tempo para a compressão (s)")
-    plt.savefig(COMP_PNG_FILE)
+    plt.savefig(COMP_PNG_FILE, bbox_inches="tight", pad_inches=0.1)
     plt.close()
 
     data = zip(*[map(float, line.split()) for line in open(DECOMP_TIMES_FILE)])
+    plt.figure(figsize=(4,3), dpi=80)
     plt.plot(*data, marker="o")
     plt.xlabel("Tamanho do arquivo (MB)")
     plt.ylabel("Tempo para a descompressão (s)")
-    plt.savefig(DECOMP_PNG_FILE)
+    plt.savefig(DECOMP_PNG_FILE, bbox_inches="tight", pad_inches=0.1)
     plt.close()
 
     data = zip(*[map(float, line.split()) for line in open(COMP_RATE_FILE)])
+    plt.figure(figsize=(4,3), dpi=80)
     plt.plot(*data, marker="o")
     plt.xlabel("Tamanho do arquivo original (MB)")
     plt.ylabel("Taxa de compressão (%)")
-    plt.savefig(RATE_PNG_FILE)
+    plt.savefig(RATE_PNG_FILE, bbox_inches="tight", pad_inches=0.1)
     plt.close()
 
 def Main():

@@ -23,7 +23,7 @@ $ ./run --exec --exec_args <params> <file>
 #+end_src
 
 quanto pela execução direta do executável:
-#+begin_src
+#+begin_src sh
 $ bin/program <params> <file>
 #+end_src
 
@@ -44,12 +44,10 @@ OBS.: A descompactação só pode ser realizada em arquivos compactados por este
 Em [[https://github.com/luk3rr/HUFFMAN_COMPRESS/tree/main/test/benchmark][test/benchmark]] existe o script =benchmark.py=, o qual realiza uma bateria de testes para diferentes tamanhos de arquivos, além de plotar alguns gráficos com os resultados. Esses resultados são demonstrados a seguir.
 
 ** Taxa de compressão
-[[file:test/benchmark/graphics/compression_rates.png][320x240]]
+[[file:test/benchmark/graphics/compression_rates.png]]
 ** Tempo de compressão
-#+ATTR_HTML: :width 200px
 [[file:test/benchmark/graphics/compression_times.png]]
 ** Tempo para descompressão
-#+ATTR_HTML: :width 200px
 [[file:test/benchmark/graphics/decompression_times.png]]
 * Documentação
 A primeira versão da documentação bem como o enunciado deste trabalho pode ser lida [[https://github.com/luk3rr/HUFFMAN_COMPRESS/tree/main/docs][aqui]].
