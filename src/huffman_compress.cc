@@ -5,12 +5,6 @@
  */
 
 #include "huffman_compress.h"
-#include "pair.h"
-#include "priority_queue_bheap.h"
-#include "priority_queue_slkd.h"
-#include <cstddef>
-#include <cstdint>
-#include <string>
 
 namespace huff
 {

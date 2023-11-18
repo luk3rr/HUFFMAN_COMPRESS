@@ -20,8 +20,6 @@
 #include "binary_tree.h"
 #include "huffman_compress_excpt.h"
 #include "map.h"
-#include "node.h"
-#include "node_rbtree.h"
 #include "parser.h"
 #include "priority_queue_bheap.h"
 #include "vector.h"
@@ -34,13 +32,24 @@ constexpr uint8_t FOUR_BYTE_UTF8_MASK  = 0xF0; // 11110000
 constexpr uint8_t BYTE_MASK            = 0xFF; // 11111111
 
 // Assinatura do arquivo comprimido
-inline constexpr std::string_view SIGNATURE       = "HUFF";
-constexpr uint32_t                BUFFER_MAX_SIZE = 1024 * 16; // 16 kB
-constexpr uint8_t                 BYTE_SIZE       = 8;         // Um byte, oito bits
+inline constexpr std::string_view SIGNATURE = "HUFF";
 
-// Número de bytes reservados no início do arquivo
-// 1 byte para representar a quantidade de bits válidos no último byte
-// 3 bytes para representar o tamanho do cabeçalho
+constexpr uint32_t BUFFER_MAX_SIZE = 1024 * 16; // 16 kB
+constexpr uint8_t  BYTE_SIZE       = 8;         // Um byte, oito bits
+
+// Todo binário resultante da compressão de um arquivo contém um header.
+// O tamanho total do header é variável, pois depende da codificação da trie necessária
+// para descompactar o binário.
+// Os primeiros oito bytes do header são reservados:
+// 4 bytes para armazenar a assinatura do programa
+// 1 byte para representar a quantidade de bits válidos no último byte do binário
+//   - Em certos casos, alguns bits do último bit são lixo. Como é necessário gravar
+//     sempre de bytes completos, pode ocorrer de utilizarmos apenas alguns bits do
+//     último byte. Nesse caso, para gravarmos esses bits, preenchemos esse último byte
+//     com 0s ou 1s
+// 3 bytes para representar o tamanho total do cabeçalho
+//   - Utilizado para saber até qual byte do binário o cabeçalho se estende
+
 constexpr uint8_t HEADER_RESERVED_BYTES_AT_START = 4;
 constexpr uint8_t HEADER_SIZE_IN_BYTES           = 3;
 
