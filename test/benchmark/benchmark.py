@@ -71,8 +71,12 @@ def GenInputFiles():
         Gera os arquivos necessários para os testes, caso eles não estejam disponíveis
     """
     print("Gerando os arquivos faltantes...")
-    for i in range(1, AMOUNT_OF_INPUTS + 1):
+    for i in range(0, AMOUNT_OF_INPUTS + 1):
         filesize = i * GAP_BETWEEN_FILE_INPUT_SIZE
+
+        if filesize == 0:
+            filesize = 1
+
         filepath = os.path.join(INPUT_DIR, f"random-{filesize:.1f}MB.txt")
 
         if not os.path.isfile(filepath):
@@ -185,7 +189,7 @@ def RunTests():
 def PlotAnalysis():
     data = zip(*[map(float, line.split()) for line in open(COMP_TIMES_FILE)])
     plt.figure(figsize=(4,3), dpi=80)
-    plt.plot(*data, marker="o")
+    plt.plot(*data, marker=None)
     plt.xlabel("Tamanho do arquivo (MB)")
     plt.ylabel("Tempo para a compressão (s)")
     plt.savefig(COMP_PNG_FILE, bbox_inches="tight", pad_inches=0.1)
@@ -193,7 +197,7 @@ def PlotAnalysis():
 
     data = zip(*[map(float, line.split()) for line in open(DECOMP_TIMES_FILE)])
     plt.figure(figsize=(4,3), dpi=80)
-    plt.plot(*data, marker="o")
+    plt.plot(*data, marker=None)
     plt.xlabel("Tamanho do arquivo (MB)")
     plt.ylabel("Tempo para a descompressão (s)")
     plt.savefig(DECOMP_PNG_FILE, bbox_inches="tight", pad_inches=0.1)
@@ -201,7 +205,7 @@ def PlotAnalysis():
 
     data = zip(*[map(float, line.split()) for line in open(COMP_RATE_FILE)])
     plt.figure(figsize=(4,3), dpi=80)
-    plt.plot(*data, marker="o")
+    plt.plot(*data, marker=None)
     plt.xlabel("Tamanho do arquivo original (MB)")
     plt.ylabel("Taxa de compressão (%)")
     plt.savefig(RATE_PNG_FILE, bbox_inches="tight", pad_inches=0.1)

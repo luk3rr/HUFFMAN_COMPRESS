@@ -10,7 +10,7 @@ import sys
 import os
 
 MEGABYTE = 1024 ** 2
-BUFFER_MAX_SIZE = MEGABYTE
+BUFFER_MAX_SIZE = MEGABYTE * 0.5
 WORD_MAX_LENGTH = 20
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +42,7 @@ def GenTextFile(filesize):
             words.append(word)
             bufferSize += word_length + 1  # Adicionar 1 para o espaço em branco
             currentSize += word_length + 1
+
 
             if bufferSize >= BUFFER_MAX_SIZE:
                 encoded_text = ' '.join(words)
